@@ -68,10 +68,16 @@ def run_trial(K=8, M=5, pi_pos=5.0, omega_e=5.0, gamma=16.0, c_scale=1.0,
         hist['valence_jc'][t] = info['valence_jc']
         hist['G'][t]       = info['G']
         hist['pi'][t]      = info['pi']
-        # Pattisapu et al.
+        # Three-channel valence
+        hist['v_model'][t]   = info['v_model']
+        hist['v_reward'][t]  = info['v_reward']
+        hist['v_action'][t]  = info['v_action']
+        hist['valence'][t]   = info['valence']
+        # Pattisapu et al. (legacy)
         hist['valence_p'][t] = info['valence_p']
         hist['arousal_p'][t] = info['arousal_p']
         hist['arousal_norm'][t] = info['arousal_norm']
+        hist['policy_entropy_norm'][t] = info['policy_entropy_norm']
 
     # Second derivative → anticipation
     hist['d2F'] = np.diff(hist['dF'], prepend=hist['dF'][0])
@@ -95,10 +101,16 @@ def _make_history(T, K):
         pi             = np.zeros((T, N_ACTIONS)),
         d2F            = np.zeros(T),
         anticipation   = np.zeros(T),
-        # Pattisapu et al.
+        # Three-channel valence
+        v_model        = np.zeros(T),
+        v_reward       = np.zeros(T),
+        v_action       = np.zeros(T),
+        valence        = np.zeros(T),
+        # Pattisapu et al. (legacy)
         valence_p      = np.zeros(T),
         arousal_p      = np.zeros(T),
         arousal_norm   = np.zeros(T),
+        policy_entropy_norm = np.zeros(T),
     )
 
 

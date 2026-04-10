@@ -321,40 +321,34 @@ def plot_circumplex(results, save_path=None):
     """
     Figure 6: Circumplex trajectories per phenotype.
 
-    V = U − EU  (horizontal: positive = happy, negative = sad).
-    A = 2·H_norm − 1  (vertical: +1 = alert/uncertain, −1 = calm/certain).
-    Polar transform: θ = atan2(A, V),  r = √(V² + A²)  = intensity.
+    Uses the three-channel composite valence (tanh-bounded to [-1, 1]):
+      V = tanh(v_model + v_reward + v_action)
+    and centred policy entropy as arousal:
+      A = 2·H[q(π)]/log|Π| − 1  ∈ [-1, 1]
+
+    Policy entropy differentiates phenotypes far better than state entropy:
+    depressive ≈ 0.92 (near-random), healthy ≈ 0.21 (decisive), manic ≈ 0.45.
+    State entropy is uniformly high (~0.8) across all phenotypes.
     """
     names = ['healthy', 'depressive', 'manic']
     fig, axes = plt.subplots(1, 3, figsize=(16, 6),
                              subplot_kw=dict(projection='polar'))
 
-    # Compute global r_max for consistent scale across panels
-    global_rmax = 0.3
-    for name in names:
-        h = results[name]
-        V = h['valence_p'].copy()
-        A = 2.0 * h['arousal_norm'] - 1.0
-        v_scale = max(np.abs(V).max(), 0.01)
-        V_s = V / v_scale
-        r = np.sqrt(V_s**2 + A**2)
-        global_rmax = max(global_rmax, r.max() * 1.2)
+    # Both axes are already in [-1, 1]; max possible r = sqrt(2)
+    global_rmax = np.sqrt(2) * 1.05
 
     for idx, name in enumerate(names):
         ax = axes[idx]
         h = results[name]
-        V = h['valence_p'].copy()
-        A_raw = h['arousal_norm'].copy()
 
-        # Centre arousal:  0 → −1 (calm/certain),  1 → +1 (alert/uncertain)
-        A = 2.0 * A_raw - 1.0
+        # Composite valence (already tanh-bounded [-1, 1])
+        V = h['valence']
+        # Centred arousal from policy entropy:
+        # 0 → −1 (decisive/certain), 1 → +1 (indecisive/uncertain)
+        A = 2.0 * h['policy_entropy_norm'] - 1.0
 
-        # Scale valence to roughly ±1 for visual balance
-        v_scale = max(np.abs(V).max(), 0.01)
-        V_s = V / v_scale
-
-        theta = np.arctan2(A, V_s)
-        r = np.sqrt(V_s**2 + A**2)
+        theta = np.arctan2(A, V)
+        r = np.sqrt(V**2 + A**2)
 
         sc = ax.scatter(theta, r, c=np.arange(len(V)), cmap='viridis',
                         s=18, alpha=0.7, zorder=5)
@@ -366,16 +360,13 @@ def plot_circumplex(results, save_path=None):
         ax.scatter(theta[-1], r[-1], marker='s', s=80, c='red',
                    edgecolors='k', zorder=10, label='End')
 
-        # Consistent scale across panels
         ax.set_rlim(0, global_rmax)
 
-        # Emotion labels around the perimeter
         for deg, label in _CIRC_LABELS:
             rad = np.deg2rad(deg)
             ax.text(rad, global_rmax * 0.92, label, ha='center', va='center',
                     fontsize=8, fontweight='bold', color='#444')
 
-        # Light reference circles
         for frac in [0.33, 0.66]:
             circle_r = global_rmax * frac
             th = np.linspace(0, 2 * np.pi, 100)
@@ -389,7 +380,7 @@ def plot_circumplex(results, save_path=None):
                   bbox_to_anchor=(1.15, -0.05))
 
     plt.colorbar(sc, ax=axes[-1], label='Timestep', shrink=0.65, pad=0.15)
-    fig.suptitle('Circumplex Emotional Trajectories  (Pattisapu et al. 2024)',
+    fig.suptitle('Circumplex Emotional Trajectories  (Three-Channel Valence)',
                  fontsize=13, y=1.0)
     plt.tight_layout()
     if save_path:
