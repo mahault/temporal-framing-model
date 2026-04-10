@@ -71,7 +71,7 @@ The first three parameters are orthogonal: they affect distinct components of th
 
 ## 4. Affective Readout
 
-We derive valence and arousal from three complementary channels, each grounding a distinct temporal orientation of the affective signal. The composite readout maps onto the circumplex model of emotion (Russell, 1980).
+We derive valence and dominance from three complementary channels, each grounding a distinct temporal orientation of the affective signal. The composite readout maps onto the pleasure–dominance plane of Mehrabian's PAD model (Mehrabian, 1996).
 
 ### 4.1 Three-Channel Valence
 
@@ -101,27 +101,34 @@ $$V = \tanh(v_{\text{model}} + v_{\text{reward}} + v_{\text{action}})$$
 
 The $\tanh$ bounding ensures $V \in [-1, 1]$ without requiring per-phenotype normalisation, enabling direct comparison across clinical profiles.
 
-### 4.2 Arousal
+### 4.2 Arousal and Dominance
 
-We define two complementary measures of arousal, each capturing a distinct source of uncertainty:
+We define two complementary measures of uncertainty, each capturing a distinct source:
 
 **State arousal.** The entropy of the posterior belief distribution:
 
 $$A_{\text{state}} = H[Q(s|o)] = -\sum_s Q(s|o) \log Q(s|o)$$
 
-normalised by $\log |\mathcal{S}|$ to yield $A_{\text{state}} \in [0, 1]$. This measures uncertainty about the current hidden state — functionally linked to the amygdala's role as a learning signal for allostatic regulation (Barrett, 2017).
+normalised by $\log |\mathcal{S}|$ to yield $A_{\text{state}} \in [0, 1]$. This measures uncertainty about the current hidden state — functionally linked to the amygdala's role as a learning signal for allostatic regulation (Barrett, 2017). In our model, state arousal is uniformly high across phenotypes (due to the large factored state space) and does not differentiate clinical profiles.
 
-**Policy arousal.** The entropy of the policy distribution:
+**Dominance (policy precision).** Following Mehrabian's Pleasure–Arousal–Dominance (PAD) framework (Mehrabian, 1996), we define dominance as the *precision* of the policy distribution:
 
-$$A_{\text{policy}} = H[Q(\pi)] = -\sum_a Q(a) \log Q(a)$$
+$$D = 1 - \frac{H[Q(\pi)]}{\log |\mathcal{A}|}$$
 
-normalised by $\log |\mathcal{A}|$ to yield $A_{\text{policy}} \in [0, 1]$. This measures decision uncertainty — the agent's inability to distinguish among actions. While state arousal is uniformly high across phenotypes (due to the large factored state space), policy arousal differentiates sharply: the decisive healthy agent ($A_{\text{policy}} \approx 0.21$) contrasts with the indecisive depressive agent ($A_{\text{policy}} \approx 0.92$) and the moderately focused manic agent ($A_{\text{policy}} \approx 0.45$).
+where $H[Q(\pi)] = -\sum_a Q(a) \log Q(a)$ is the policy entropy. High dominance ($D \to 1$) corresponds to a sharp, decisive policy — the agent knows what to do and is in control. Low dominance ($D \to 0$) corresponds to a flat, indecisive policy — the agent is helpless and unable to distinguish among actions.
 
-### 4.3 Circumplex Transformation
+Dominance differentiates sharply across phenotypes: the decisive healthy agent ($D \approx 0.79$) contrasts with the indecisive depressive agent ($D \approx 0.09$) and the moderately focused manic agent ($D \approx 0.55$). This maps directly onto the clinical construct: depression is characterised by helplessness and loss of agency; mania by variable but sometimes intense goal-directedness; health by a stable sense of control.
 
-To map the agent's trajectory onto the circumplex model, we use composite valence $V$ (horizontal axis) and centred policy arousal $A_c = 2 A_{\text{policy}} - 1 \in [-1, 1]$ (vertical axis), so that low policy entropy (decisiveness) corresponds to calm ($A_c < 0$) and high policy entropy (indecision) corresponds to alertness ($A_c > 0$). The polar transformation $r = \sqrt{V^2 + A_c^2}$, $\theta = \arctan(A_c / V)$ then places the agent's emotional state within the standard circumplex (Russell, 1980), with 0° = Happy, 90° = Alert, 180° = Sad, 270° = Calm.
+### 4.3 Valence–Dominance Affect Space
 
-Policy arousal is preferred over state arousal for the circumplex because it captures the *behavioural consequence* of uncertainty: a depressive agent with near-uniform policy selection is behaviourally agitated (high arousal) regardless of how well it can localise its hidden state.
+To visualise the agent's affective trajectory, we plot composite valence $V$ (horizontal axis) against centred dominance $D_c = 2D - 1 \in [-1, 1]$ (vertical axis). This follows the pleasure–dominance plane of the PAD model (Mehrabian, 1996), which separates emotional states by both hedonic tone and sense of control:
+
+- $(+V, +D)$: *Happy / Content* — positive valence, decisive
+- $(-V, +D)$: *Angry / Frustrated* — negative valence, decisive
+- $(+V, -D)$: *Excited / Elated* — positive valence, scattered
+- $(-V, -D)$: *Depressed / Fearful* — negative valence, helpless
+
+We prefer the valence–dominance plane over the traditional valence–arousal circumplex (Russell, 1980) because state arousal (posterior entropy) does not differentiate phenotypes in our model, whereas policy precision provides a sharp and clinically interpretable axis of variation.
 
 ### 4.4 Anticipation
 
@@ -182,15 +189,15 @@ Valence variance decreases with granularity: $0.109$ at $K{=}2$, $0.042$ at $K{=
 
 This result formalises the clinical observation that emotional granularity — the ability to make fine-grained distinctions among affective states — is a protective factor against mood instability (Barrett, 2017). In our model, the protection is mechanistic: higher $K$ increases the resolution of both the $\mathbf{B}_v$ matrix and the $\mathbf{A}_{\text{val}}$ observation model, enabling the agent to make smaller steps through the affective landscape rather than being forced into all-or-nothing transitions.
 
-### 6.3 Circumplex Emotional Trajectories
+### 6.3 Valence–Dominance Trajectories
 
-Mapping three-channel valence and policy arousal onto the circumplex (Figure 6) reveals qualitatively distinct emotional signatures that directly reflect each phenotype's computational profile.
+Mapping three-channel valence against policy dominance (Figure 6) reveals qualitatively distinct emotional signatures that directly reflect each phenotype's computational profile.
 
-The **healthy** agent's trajectory occupies the lower half of the circumplex (Calm–Happy–Content region), reflecting moderate positive valence and low policy arousal. The low arousal is a direct consequence of decisive policy selection: RECALL dominates the healthy agent's policy distribution, producing a peaked $Q(\pi)$ with low entropy. This agent knows what to do and feels good about doing it.
+The **healthy** agent's trajectory clusters tightly in the upper-right quadrant (Happy/Content), reflecting moderate positive valence and high dominance. The high dominance is a direct consequence of decisive policy selection: RECALL dominates the healthy agent's policy distribution, producing a peaked $Q(\pi)$ with low entropy. This agent knows what to do and feels good about doing it — the computational signature of contentment.
 
-The **depressive** agent occupies the upper half of the circumplex (Alert–Tense region), with valence centred near zero and high policy arousal. The near-maximal arousal reflects policy indecision: anhedonia ($c_{\text{scale}} = 0.1$) flattens the expected free energy landscape, rendering all actions approximately equivalent and producing a near-uniform policy distribution. This computational signature — high uncertainty without directional valence — matches the clinical presentation of agitated depression and is consistent with findings linking affect instability to near-random temporal framing (Houben et al., 2015).
+The **depressive** agent sits at the bottom of the affect space, with valence centred near zero and dominance at its minimum. The near-zero valence reflects anhedonia ($c_{\text{scale}} = 0.1$): the agent cannot generate strong positive or negative hedonic responses. The collapsed dominance reflects policy indecision — anhedonia flattens the expected free energy landscape, rendering all actions approximately equivalent and producing a near-uniform policy distribution. This computational signature — low dominance without directional valence — maps directly onto the clinical presentation of helpless depression, characterised by psychomotor retardation, loss of agency, and the inability to generate adaptive counterfactuals across any temporal horizon (Houben et al., 2015).
 
-The **manic** agent spreads across the right half of the circumplex (positive valence), with arousal oscillating between moderate and low. The positive valence reflects the combined contribution of all three channels: high $v_{\text{reward}}$ (reward hypersensitivity amplifies positive prediction errors), high $v_{\text{model}}$ during periods of stable overconfidence, and intermittent $v_{\text{action}}$ as the agent shifts between RECALL and FUTURATE. The oscillating arousal captures the characteristic manic pattern of alternating between focused pursuit (low policy entropy during FUTURATE bursts) and momentary indecision (higher entropy during frame transitions).
+The **manic** agent's trajectory spans a wide region of the affect space, traversing from the Angry quadrant (upper-left) through Happy (upper-right) and down into the Excited region (lower-right). This emotional lability — rapidly traversing multiple quadrants — is characteristic of mania. The wide spread reflects the interaction of reward hypersensitivity ($c_{\text{scale}} = 2.0$), which amplifies hedonic responses, with variable policy precision: dominance is high during focused FUTURATE bursts and collapses during frame transitions. The trajectory drifts over time from initially scattered states toward a mid-range oscillation pattern, mirroring the clinical course of a manic episode stabilising into a less extreme but persistently dysregulated state.
 
 ### 6.4 Parameter Landscape
 
@@ -201,6 +208,21 @@ The parameter sweep (Figure 4) reveals a clinical landscape with identifiable re
 - **Low $\pi_{\text{pos}}$, high $\omega_e$**: Moderate-low valence with low action entropy. This is the depressive zone — the agent can track its state but cannot generate the positive counterfactuals needed to sustain affect. The low action entropy reflects policy collapse toward a single dominant action (typically RECALL, albeit ineffective).
 
 - **High $\pi_{\text{pos}}$, high $\omega_e$**: Highest mean valence, stable energy, and moderate action entropy. The healthy zone — both narrative resources (effective RECALL) and self-monitoring (accurate interoception) are available, supporting a diverse and adaptive policy.
+
+### 6.5 Emotion Validation in PAD Space
+
+To test the model's affective range beyond the three clinical phenotypes, we construct ten parameter configurations targeting distinct regions of the Pleasure–Arousal–Dominance (PAD) space (Figure 7). A critical design insight is that $c_{\text{scale}}$ and $\gamma$ independently control arousal and dominance, respectively:
+
+- **Arousal** is operationalised as the mean expected free energy across policies, $\bar{G} = \frac{1}{|\mathcal{A}|} \sum_a G(a)$, normalised via $\tanh(\bar{G} / \tau_A)$. High $c_{\text{scale}}$ amplifies the preference vectors, producing large EFE magnitudes (high arousal = high anticipated threat). Low $c_{\text{scale}}$ compresses EFE (low arousal = nothing at stake).
+- **Dominance** is policy precision $1 - H[Q(\pi)] / \log|\mathcal{A}|$. High $\gamma$ sharpens the softmax over EFE, concentrating probability on the best action (high dominance). Low $\gamma$ flattens it (low dominance).
+
+This decoupling allows the model to distinguish states that share one dimension but differ on another:
+
+- **Angry** ($V = -0.12$, $A = 0.99$, $D = 0.86$) vs. **Fearful** ($V = -0.03$, $A = 0.83$, $D = -0.35$): Both are negative-valence, high-arousal states, but anger is maximally decisive (high $\gamma$, high $c_{\text{scale}}$ — the agent has strong preferences and concentrates on the least-bad option) while fear is indecisive (low $\gamma$ — the agent anticipates bad outcomes but cannot commit to any action).
+- **Excited** ($V = 0.09$, $A = 0.81$, $D = -0.49$) vs. **Happy** ($V = 0.26$, $A = 0.39$, $D = 0.72$): Both are positive-valence, but excitement is high-arousal and low-dominance (scattered attention, low $\gamma$) while happiness is moderate-arousal and high-dominance (calm confidence).
+- **Depressed** ($V = 0.03$, $A = -0.28$, $D = -0.85$) vs. **Sad** ($V = 0.05$, $A = -0.22$, $D = -0.65$): Both are low-arousal, low-dominance, near-zero valence. The model correctly captures these as similar states that differ in degree rather than kind.
+
+The model's primary limitation is a positive valence bias: the homeostatic recovery mechanisms and RECALL prior prevent sustained strongly negative valence, compressing the valence axis to approximately $[-0.2, 0.3]$. This reflects a genuine modelling trade-off — the mechanisms that enable realistic bipolar cycling also constrain the depth of purely negative affect.
 
 
 ## 7. Discussion
@@ -263,7 +285,9 @@ Finally, while the granularity sweep provides a clear computational prediction (
 
 **Figure 5. Phase portraits: valence $\times$ energy.** Each panel plots EMA-smoothed believed valence against true energy over time, with colour encoding timestep (purple = early, yellow = late). The healthy agent occupies a tight cluster at high energy with moderate valence spread (stable dynamics). The depressive agent wanders widely across the state space (emotional instability driven by near-random policy). The manic agent shows a characteristic vertical spread — high valence across a wide energy range — reflecting the dissociation between subjective wellbeing and metabolic depletion. Green circle = start; red square = end.
 
-**Figure 6. Circumplex emotional trajectories.** Polar plots of composite three-channel valence ($V = \tanh(v_{\text{model}} + v_{\text{reward}} + v_{\text{action}})$; horizontal axis) and centred policy arousal ($A_c = 2 H_{\text{policy}} / \log|\mathcal{A}| - 1$; vertical axis). The healthy agent occupies the Calm–Happy region (decisive policy, moderate positive valence). The depressive agent clusters in the Alert–Tense region (near-maximal policy entropy from anhedonic indecision, valence near zero). The manic agent spreads across the right half (positive valence from reward hypersensitivity, oscillating arousal as focus shifts between RECALL and FUTURATE bursts). Colour encodes timestep (purple = early, yellow = late); shared $r$-limits across panels.
+**Figure 6. Valence–dominance affect space.** Composite three-channel valence ($V = \tanh(v_{\text{model}} + v_{\text{reward}} + v_{\text{action}})$; horizontal axis) against centred policy dominance ($D_c = 2(1 - H_{\text{policy}} / \log|\mathcal{A}|) - 1$; vertical axis), following the pleasure–dominance plane of the PAD model (Mehrabian, 1996). The healthy agent clusters tightly in the Happy/Content quadrant (positive valence, high dominance from decisive policy selection). The depressive agent sits at the bottom of the space (near-zero valence from anhedonia, minimal dominance from near-uniform policy). The manic agent spans multiple quadrants (emotional lability: wide valence swings from reward hypersensitivity, variable dominance from alternating focused pursuit and frame transitions). Colour encodes timestep (purple = early, yellow = late).
+
+**Figure 7. 3D PAD emotion validation.** Ten parameter configurations targeting distinct regions of the Pleasure–Arousal–Dominance space (Mehrabian, 1996). Large markers show time-averaged coordinates; faded trajectories show per-timestep dynamics. Arousal = mean EFE across policies (normalised via $\tanh$); dominance = policy precision ($1 - H_{\text{policy}} / \log|\mathcal{A}|$); valence = EMA-smoothed three-channel composite. The key decoupling: $c_{\text{scale}}$ controls arousal (EFE magnitude) while $\gamma$ independently controls dominance (policy sharpness), allowing the model to distinguish anger (high A, high D) from fear (high A, low D) and excitement (high A, low D) from contentment (low A, high D). See also the 2D projections in the supplementary material.
 
 ---
 

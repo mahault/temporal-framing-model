@@ -3,9 +3,10 @@ Experiment configurations and runners.
 
 Experiments
 -----------
-1. Phenotype comparison  – healthy / depressive / manic
-2. Granularity sweep     – K = 2, 4, 6, 8
-3. Parameter landscape   – pi_pos x omega_e heatmap
+1. Phenotype comparison   – healthy / depressive / manic
+2. Granularity sweep      – K = 2, 4, 6, 8
+3. Parameter landscape    – pi_pos x omega_e heatmap
+4. Emotion validation     – 10 profiles targeting PAD regions
 """
 
 import numpy as np
@@ -175,3 +176,59 @@ def run_parameter_sweep(T=200, seed=42, n_pi=10, n_omega=10):
         mean_valence=mean_valence, valence_variance=valence_variance,
         mean_energy=mean_energy, action_entropy=action_entropy,
     )
+
+
+# ── Experiment 4: PAD emotion validation ─────────────────
+# Each profile targets a region of the Pleasure-Arousal-Dominance space.
+# Key decoupling: c_scale controls arousal (mean G magnitude),
+# gamma controls dominance (policy precision) independently.
+EMOTION_PROFILES = {
+    'happy': dict(
+        K=8, M=8, pi_pos=5.0, omega_e=5.0, gamma=16.0, c_scale=1.5,
+        volatility=0.3,
+    ),
+    'content': dict(
+        K=8, M=8, pi_pos=5.0, omega_e=5.0, gamma=16.0, c_scale=0.8,
+        volatility=0.3,
+    ),
+    'calm': dict(
+        K=8, M=8, pi_pos=2.0, omega_e=3.0, gamma=16.0, c_scale=0.7,
+        volatility=0.3,
+    ),
+    'excited': dict(
+        K=4, M=8, pi_pos=5.0, omega_e=0.5, gamma=4.0, c_scale=2.5,
+        volatility=0.45,
+    ),
+    'alert': dict(
+        K=4, M=8, pi_pos=2.5, omega_e=2.0, gamma=16.0, c_scale=2.0,
+        volatility=0.6,
+    ),
+    'angry': dict(
+        K=8, M=8, pi_pos=0.1, omega_e=0.2, gamma=16.0, c_scale=5.0,
+        volatility=0.8,
+    ),
+    'fearful': dict(
+        K=4, M=8, pi_pos=0.3, omega_e=0.3, gamma=4.0, c_scale=2.5,
+        volatility=0.8,
+    ),
+    'sad': dict(
+        K=4, M=8, pi_pos=0.1, omega_e=3.0, gamma=16.0, c_scale=0.25,
+        volatility=0.6,
+    ),
+    'depressed': dict(
+        K=4, M=8, pi_pos=0.2, omega_e=5.0, gamma=16.0, c_scale=0.1,
+        volatility=0.45,
+    ),
+    'bored': dict(
+        K=4, M=8, pi_pos=1.5, omega_e=5.0, gamma=16.0, c_scale=0.15,
+        volatility=0.3,
+    ),
+}
+
+
+def run_emotion_validation(T=300, seed=42):
+    results = {}
+    for name, prof in EMOTION_PROFILES.items():
+        h = run_trial(**prof, T=T, seed=seed)
+        results[name] = h
+    return results

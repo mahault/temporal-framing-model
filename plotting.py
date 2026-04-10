@@ -310,79 +310,196 @@ def plot_phase_portrait(results, save_path=None):
     return fig
 
 
-# ── Figure 6: Circumplex (Pattisapu et al.) ────────────────
-_CIRC_LABELS = [
-    (  0, 'Happy'),   ( 45, 'Excited'), ( 90, 'Alert'),
-    (135, 'Angry'),   (180, 'Sad'),     (225, 'Depressed'),
-    (270, 'Calm'),    (315, 'Relaxed'),
-]
-
+# ── Figure 6: Valence × Dominance affect space (PAD model) ──
 def plot_circumplex(results, save_path=None):
     """
-    Figure 6: Circumplex trajectories per phenotype.
+    Figure 6: Valence × Dominance trajectories per phenotype.
 
-    Uses the three-channel composite valence (tanh-bounded to [-1, 1]):
-      V = tanh(v_model + v_reward + v_action)
-    and centred policy entropy as arousal:
-      A = 2·H[q(π)]/log|Π| − 1  ∈ [-1, 1]
+    Following Mehrabian's PAD model and the precision-as-dominance
+    framework (empathy.md §11.2):
 
-    Policy entropy differentiates phenotypes far better than state entropy:
-    depressive ≈ 0.92 (near-random), healthy ≈ 0.21 (decisive), manic ≈ 0.45.
-    State entropy is uniformly high (~0.8) across all phenotypes.
+    Valence (x): EMA-smoothed three-channel composite
+      V = EMA(tanh(v_model + v_reward + v_action))
+
+    Dominance (y): Policy precision = 1 − H[q(π)] / H_max
+      High dominance = sharp policy = decisive / in control
+      Low dominance  = flat policy  = indecisive / helpless
+      Centred to [-1, 1]: D = 2·(1 − H_norm) − 1
+
+    Quadrants:
+      (+V, +D)  Happy / Content     — positive, decisive
+      (−V, +D)  Angry / Frustrated  — negative, decisive
+      (+V, −D)  Excited / Manic     — positive, scattered
+      (−V, −D)  Depressed / Fearful — negative, helpless
     """
     names = ['healthy', 'depressive', 'manic']
-    fig, axes = plt.subplots(1, 3, figsize=(16, 6),
-                             subplot_kw=dict(projection='polar'))
-
-    # Both axes are already in [-1, 1]; max possible r = sqrt(2)
-    global_rmax = np.sqrt(2) * 1.05
+    fig, axes = plt.subplots(1, 3, figsize=(16, 5.5))
 
     for idx, name in enumerate(names):
         ax = axes[idx]
         h = results[name]
 
-        # Composite valence (already tanh-bounded [-1, 1])
-        V = h['valence']
-        # Centred arousal from policy entropy:
-        # 0 → −1 (decisive/certain), 1 → +1 (indecisive/uncertain)
-        A = 2.0 * h['policy_entropy_norm'] - 1.0
+        # Valence: EMA-smoothed composite
+        V = _ema(h['valence'], alpha=0.1)
 
-        theta = np.arctan2(A, V)
-        r = np.sqrt(V**2 + A**2)
+        # Dominance: policy precision, centred to [-1, 1]
+        D_raw = 1.0 - h['policy_entropy_norm']   # [0, 1]
+        D = 2.0 * D_raw - 1.0                     # [-1, 1]
+        D = _ema(D, alpha=0.1)
 
-        sc = ax.scatter(theta, r, c=np.arange(len(V)), cmap='viridis',
+        T = len(V)
+        sc = ax.scatter(V, D, c=np.arange(T), cmap='viridis',
                         s=18, alpha=0.7, zorder=5)
-        ax.plot(theta, r, color=PCOL[name], alpha=0.15, lw=0.5)
+        ax.plot(V, D, color=PCOL[name], alpha=0.15, lw=0.5)
 
         # Start / end markers
-        ax.scatter(theta[0], r[0], marker='o', s=80, c='green',
+        ax.scatter(V[0], D[0], marker='o', s=80, c='green',
                    edgecolors='k', zorder=10, label='Start')
-        ax.scatter(theta[-1], r[-1], marker='s', s=80, c='red',
+        ax.scatter(V[-1], D[-1], marker='s', s=80, c='red',
                    edgecolors='k', zorder=10, label='End')
 
-        ax.set_rlim(0, global_rmax)
+        # Cross-hairs
+        ax.axhline(0, color='gray', lw=0.5, ls=':')
+        ax.axvline(0, color='gray', lw=0.5, ls=':')
 
-        for deg, label in _CIRC_LABELS:
-            rad = np.deg2rad(deg)
-            ax.text(rad, global_rmax * 0.92, label, ha='center', va='center',
-                    fontsize=8, fontweight='bold', color='#444')
+        ax.set_xlim(-1.1, 1.1)
+        ax.set_ylim(-1.1, 1.1)
+        ax.set_aspect('equal')
+        ax.set_xlabel('Valence')
+        if idx == 0:
+            ax.set_ylabel('Dominance  (policy precision)')
+        ax.set_title(f'{name.capitalize()}', fontsize=12)
+        if idx == 0:
+            ax.legend(fontsize=7, loc='lower left')
 
-        for frac in [0.33, 0.66]:
-            circle_r = global_rmax * frac
-            th = np.linspace(0, 2 * np.pi, 100)
-            ax.plot(th, np.full_like(th, circle_r),
-                    color='gray', lw=0.3, alpha=0.4)
+        # Quadrant emotion labels (inset from corners to avoid legend)
+        ax.text( 0.65,  0.95, 'Happy',      ha='center', fontsize=8,
+                 color='#27ae60', fontstyle='italic')
+        ax.text(-0.65,  0.95, 'Angry',       ha='center', fontsize=8,
+                 color='#c0392b', fontstyle='italic')
+        ax.text( 0.65, -0.95, 'Excited',     ha='center', fontsize=8,
+                 color='#f39c12', fontstyle='italic')
+        ax.text(-0.65, -0.95, 'Depressed',   ha='center', fontsize=8,
+                 color='#2980b9', fontstyle='italic')
 
-        ax.set_title(f'{name.capitalize()}', pad=22, fontsize=12)
-        ax.set_rticks([])
-        ax.set_thetagrids([])
-        ax.legend(fontsize=7, loc='lower right',
-                  bbox_to_anchor=(1.15, -0.05))
-
-    plt.colorbar(sc, ax=axes[-1], label='Timestep', shrink=0.65, pad=0.15)
-    fig.suptitle('Circumplex Emotional Trajectories  (Three-Channel Valence)',
+    plt.colorbar(sc, ax=axes[-1], label='Timestep', shrink=0.65, pad=0.1)
+    fig.suptitle('Affect Space: Valence $\\times$ Dominance  (Three-Channel Model)',
                  fontsize=13, y=1.0)
     plt.tight_layout()
     if save_path:
         fig.savefig(save_path)
+    return fig
+
+
+# ── Figure 7: PAD emotion validation ─────────────────────
+_ECOL = {
+    'happy':     '#f1c40f',
+    'content':   '#2ecc71',
+    'calm':      '#1abc9c',
+    'excited':   '#e67e22',
+    'alert':     '#e74c3c',
+    'angry':     '#c0392b',
+    'fearful':   '#8e44ad',
+    'sad':       '#3498db',
+    'depressed': '#2c3e50',
+    'bored':     '#95a5a6',
+}
+
+
+def _compute_pad(h):
+    """Compute smoothed Pleasure, Arousal, Dominance from trial history."""
+    V = _ema(h['valence'], alpha=0.1)
+
+    D_raw = 1.0 - h['policy_entropy_norm']
+    D = 2.0 * D_raw - 1.0
+    D = _ema(D, alpha=0.1)
+
+    G = h['G']
+    mean_G = G.mean(axis=1)
+    A = np.tanh(mean_G / 8.0)
+    A = 2.0 * A - 1.0
+    A = _ema(A, alpha=0.1)
+
+    return V, A, D
+
+
+def plot_emotion_validation(results, save_path=None):
+    """
+    Figure 7: 3D PAD emotion validation.
+
+    Tests whether targeted parameter configurations produce agents
+    in distinct regions of the full Pleasure-Arousal-Dominance space.
+
+    Arousal = mean EFE across policies (expected threat level).
+    Dominance = policy precision (1 - normalised policy entropy).
+    Valence = EMA-smoothed three-channel composite.
+    """
+    from mpl_toolkits.mplot3d import Axes3D  # noqa: F401
+
+    # Collect PAD coordinates
+    pad = {}
+    for name, h in results.items():
+        pad[name] = _compute_pad(h)
+
+    # ── 3D plot ───────────────────────────────────────────
+    fig = plt.figure(figsize=(14, 10))
+    ax = fig.add_subplot(111, projection='3d')
+
+    for name, (V, A, D) in pad.items():
+        col = _ECOL.get(name, '#999')
+        mv, ma, md = np.mean(V), np.mean(A), np.mean(D)
+        ax.plot(V, A, D, color=col, alpha=0.1, lw=0.3)
+        ax.scatter(mv, ma, md, color=col, s=200, edgecolors='k',
+                   linewidths=1.5, zorder=10, label=name.capitalize(),
+                   depthshade=False)
+
+    ax.set_xlabel('Valence (Pleasure)', fontsize=11, labelpad=10)
+    ax.set_ylabel('Arousal (mean EFE)', fontsize=11, labelpad=10)
+    ax.set_zlabel('Dominance (policy precision)', fontsize=11, labelpad=10)
+    ax.set_xlim(-1.1, 1.1)
+    ax.set_ylim(-1.1, 1.1)
+    ax.set_zlim(-1.1, 1.1)
+    ax.set_title('3D PAD Emotion Validation', fontsize=13, pad=20)
+    ax.legend(loc='center left', bbox_to_anchor=(1.05, 0.5), fontsize=9)
+    ax.view_init(elev=25, azim=-60)
+
+    plt.tight_layout()
+    if save_path:
+        fig.savefig(save_path, dpi=300, bbox_inches='tight')
+    plt.close(fig)
+
+    # ── 2D projections ────────────────────────────────────
+    fig2, axes = plt.subplots(1, 3, figsize=(18, 6))
+    projections = [
+        ('Valence', 'Dominance', lambda v, a, d: (v, d)),
+        ('Valence', 'Arousal',   lambda v, a, d: (v, a)),
+        ('Arousal', 'Dominance', lambda v, a, d: (a, d)),
+    ]
+
+    for idx, (xlabel, ylabel, proj_fn) in enumerate(projections):
+        ax = axes[idx]
+        for name, (V, A, D) in pad.items():
+            col = _ECOL.get(name, '#999')
+            x, y = proj_fn(V, A, D)
+            ax.scatter(x, y, color=col, s=8, alpha=0.2, zorder=3)
+            ax.scatter(np.mean(x), np.mean(y), color=col, s=150,
+                       edgecolors='k', linewidths=1.2, zorder=10,
+                       label=name.capitalize() if idx == 2 else None)
+        ax.axhline(0, color='gray', lw=0.5, ls=':')
+        ax.axvline(0, color='gray', lw=0.5, ls=':')
+        ax.set_xlim(-1.1, 1.1)
+        ax.set_ylim(-1.1, 1.1)
+        ax.set_aspect('equal')
+        ax.set_xlabel(xlabel, fontsize=11)
+        ax.set_ylabel(ylabel, fontsize=11)
+        ax.set_title(f'{xlabel} vs {ylabel}', fontsize=12)
+
+    axes[2].legend(loc='center left', bbox_to_anchor=(1.02, 0.5), fontsize=8)
+    fig2.suptitle('PAD Projections: Emotion Validation', fontsize=13, y=1.02)
+    plt.tight_layout()
+    proj_path = save_path.replace('.png', '_projections.png') if save_path else None
+    if proj_path:
+        fig2.savefig(proj_path, dpi=300, bbox_inches='tight')
+    plt.close(fig2)
+
     return fig
