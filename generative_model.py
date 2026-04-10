@@ -77,7 +77,7 @@ def _gaussian_col(n, center, precision):
 
 
 # ── Model builder ──────────────────────────────────────────
-def build_model(K=8, M=5, pi_pos=5.0, omega_e=5.0, gamma=16.0):
+def build_model(K=8, M=5, pi_pos=5.0, omega_e=5.0, gamma=16.0, c_scale=1.0):
     """
     Construct a full POMDP generative model.
 
@@ -88,6 +88,7 @@ def build_model(K=8, M=5, pi_pos=5.0, omega_e=5.0, gamma=16.0):
     pi_pos : float   – precision on positive self-beliefs
     omega_e : float  – interoceptive precision for energy
     gamma : float    – policy precision (inverse temperature)
+    c_scale : float  – reward sensitivity (1.0=normal, <1=anhedonic, >1=hypersensitive)
 
     Returns
     -------
@@ -98,7 +99,7 @@ def build_model(K=8, M=5, pi_pos=5.0, omega_e=5.0, gamma=16.0):
 
     A = _build_A(K, M, F, n_s, omega_e)
     B = _build_B(K, M, F, n_s, pi_pos)
-    C = _build_C(K)
+    C = _build_C(K, c_scale)
     D = _build_D(K, M, F, n_s, pi_pos)
 
     return ModelSpec(A=A, B=B, C=C, D=D, K=K, M=M,
@@ -143,10 +144,11 @@ def _build_A(K, M, F, n_s, omega_e):
                 A_int[:, flat_idx(v, e, f, M)] = col
     A.append(A_int)
 
-    # --- A_val: P(o_val | v), near-identity ---
+    # --- A_val: P(o_val | v), precision scales with granularity ---
     A_val = np.zeros((K, n_s))
+    val_precision = max(2.0, float(K))   # low K → blurred self-observation
     for v in range(K):
-        col = _gaussian_col(K, v, 8.0)
+        col = _gaussian_col(K, v, val_precision)
         for e in range(M):
             for f in range(F):
                 A_val[:, flat_idx(v, e, f, M)] = col
@@ -201,8 +203,8 @@ def _B_valence(K, action, pi_pos):
 
 def _B_energy(M, action):
     """M x M energy transition matrix."""
-    # Slower depletion so manic phase lasts ~40-60 steps before crash
-    deltas = {RECALL: 0.0, ENGAGE: -0.4, FUTURATE: -0.8, REST: 0.8}
+    # Scaled for M=8: ENGAGE mildly costly, FUTURATE expensive, REST effective
+    deltas = {RECALL: 0.0, ENGAGE: -0.5, FUTURATE: -1.2, REST: 1.2}
     delta = deltas[action]
     B = np.zeros((M, M))
     for e in range(M):
@@ -242,11 +244,16 @@ def _B_frame(action):
 
 
 # ── C vectors (preferences) ───────────────────────────────
-def _build_C(K):
+def _build_C(K, c_scale=1.0):
+    """Preference vectors scaled by reward sensitivity (c_scale).
+
+    c_scale < 1 → anhedonia (flattened preferences, weak reward pursuit).
+    c_scale > 1 → hypersensitive (exaggerated reward/punishment signals).
+    """
     return [
-        np.array([-2.0, 0.0, 1.5]),           # C_ext: prefer positive feedback
-        np.array([-2.0, 0.0, 1.5]),           # C_int: prefer feeling energised
-        np.linspace(-2.0, 1.5, K),            # C_val: prefer positive valence
+        c_scale * np.array([-2.0, 0.0, 1.5]),      # C_ext
+        c_scale * np.array([-2.0, 0.0, 1.5]),      # C_int
+        c_scale * np.linspace(-2.0, 1.5, K),       # C_val
     ]
 
 

@@ -17,31 +17,33 @@ from environment import Environment
 # ── Clinical profiles ──────────────────────────────────────
 PROFILES = {
     'healthy': dict(
-        K=8, M=5, pi_pos=5.0, omega_e=5.0, gamma=16.0,
-        desc='Balanced precision, high granularity',
+        K=8, M=8, pi_pos=5.0, omega_e=5.0, gamma=16.0, c_scale=1.0,
+        desc='Balanced precision, high granularity, normal reward sensitivity',
     ),
     'depressive': dict(
-        K=2, M=5, pi_pos=0.5, omega_e=5.0, gamma=16.0,
-        desc='Low positive-belief precision, low granularity',
+        K=4, M=8, pi_pos=0.2, omega_e=5.0, gamma=16.0, c_scale=0.1,
+        desc='Low positive-belief precision, low granularity, anhedonic',
     ),
     'manic': dict(
-        K=2, M=5, pi_pos=4.0, omega_e=0.5, gamma=16.0,
-        desc='Overconfident, poor energy estimation, low granularity',
+        K=4, M=8, pi_pos=5.0, omega_e=0.5, gamma=16.0, c_scale=2.0,
+        desc='Overconfident, poor energy estimation, hypersensitive reward',
     ),
 }
 
 
 # ── Single trial ───────────────────────────────────────────
-def run_trial(K=8, M=5, pi_pos=5.0, omega_e=5.0, gamma=16.0,
-              T=300, volatility=0.3, seed=42, **_ignored):
+def run_trial(K=8, M=5, pi_pos=5.0, omega_e=5.0, gamma=16.0, c_scale=1.0,
+              T=300, volatility=0.45, seed=42, **_ignored):
     """
     Run one agent–environment trial.
 
     Returns dict of (T,)-shaped arrays for every tracked variable.
     """
-    model = build_model(K=K, M=M, pi_pos=pi_pos, omega_e=omega_e, gamma=gamma)
+    model = build_model(K=K, M=M, pi_pos=pi_pos, omega_e=omega_e,
+                        gamma=gamma, c_scale=c_scale)
     agent = Agent(model, gamma=gamma)
-    env = Environment(K=K, M=M, volatility=volatility, seed=seed)
+    env = Environment(K=K, M=M, volatility=volatility, seed=seed,
+                      pi_pos=pi_pos, c_scale=c_scale)
 
     hist = _make_history(T, K)
     obs = env.reset()
@@ -118,7 +120,7 @@ def run_granularity_experiment(T=300, n_runs=5, base_seed=42):
     for K in [2, 4, 6, 8]:
         runs = []
         for r in range(n_runs):
-            h = run_trial(K=K, M=5, pi_pos=3.0, omega_e=0.8, gamma=16.0,
+            h = run_trial(K=K, M=8, pi_pos=3.0, omega_e=0.8, gamma=16.0,
                           T=T, seed=base_seed + r)
             runs.append(h)
         results[K] = runs
@@ -136,23 +138,28 @@ def run_parameter_sweep(T=200, seed=42, n_pi=10, n_omega=10):
     mean_valence     = np.zeros((n_pi, n_omega))
     valence_variance = np.zeros((n_pi, n_omega))
     mean_energy      = np.zeros((n_pi, n_omega))
-    future_frac      = np.zeros((n_pi, n_omega))
+    action_entropy   = np.zeros((n_pi, n_omega))
 
     total = n_pi * n_omega
     done = 0
     for i, pi in enumerate(pi_vals):
         for j, om in enumerate(om_vals):
-            h = run_trial(K=4, M=5, pi_pos=pi, omega_e=om, gamma=16.0,
+            h = run_trial(K=4, M=8, pi_pos=pi, omega_e=om, gamma=16.0,
                           T=T, seed=seed)
             mean_valence[i, j]     = np.mean(h['valence_belief'])
             valence_variance[i, j] = np.var(h['valence_belief'])
-            mean_energy[i, j]      = np.mean(h['energy_true'])
-            future_frac[i, j]      = np.mean(h['action'] == 2)
+            mean_energy[i, j]      = np.mean(h['energy_belief'])
+            # Action entropy — higher = more diverse policy
+            act_counts = np.array([np.mean(h['action'] == a)
+                                   for a in range(N_ACTIONS)])
+            act_counts = np.maximum(act_counts, 1e-10)
+            action_entropy[i, j] = float(-np.dot(act_counts,
+                                                  np.log(act_counts)))
             done += 1
         print(f"    sweep {done}/{total}", flush=True)
 
     return dict(
         pi_values=pi_vals, omega_values=om_vals,
         mean_valence=mean_valence, valence_variance=valence_variance,
-        mean_energy=mean_energy, future_fraction=future_frac,
+        mean_energy=mean_energy, action_entropy=action_entropy,
     )
