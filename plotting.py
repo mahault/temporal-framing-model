@@ -7,6 +7,7 @@ Figure 3 – Granularity effect    (trajectories, variance, jumps, action mix)
 Figure 4 – Parameter landscape   (pi_pos × omega_e heatmaps)
 Figure 5 – Phase portrait        (valence × energy trajectories)
 Figure 6 – Circumplex            (Pattisapu et al. polar trajectories)
+Figure 8 – Temporal aiming       (three-channel temporal decomposition)
 """
 
 import numpy as np
@@ -502,4 +503,181 @@ def plot_emotion_validation(results, save_path=None):
         fig2.savefig(proj_path, dpi=300, bbox_inches='tight')
     plt.close(fig2)
 
+    return fig
+
+
+# ── Figure 8: Temporal aiming ────────────────────────────
+_TCOL = {'backward': '#3498db', 'present': '#2ecc71', 'forward': '#e67e22'}
+
+
+def plot_temporal_aiming(results, save_path=None):
+    """
+    Figure 8: Temporal aiming of affective channels.
+
+    Shows which temporal direction dominates the agent's affect at
+    each timestep, following the three-channel architecture:
+
+        v_model  (backward) -- Joffily & Coricelli 2013: -dF
+        v_reward (present)  -- Pattisapu et al. 2024:    U - EU
+        v_action (forward)  -- Hesp et al. 2021:         AC
+
+    Row 1: Channel traces overlaid per phenotype
+    Row 2: Normalised temporal orientation (stacked area)
+    Row 3: Summary statistics -- mean channel magnitudes + disagreement
+    """
+    names = ['healthy', 'depressive', 'manic']
+    fig, axes = plt.subplots(3, 3, figsize=(16, 12))
+
+    sm_alpha = 0.08
+
+    for col, name in enumerate(names):
+        h = results[name]
+        T = len(h['v_model'])
+        t = np.arange(T)
+
+        vm = _ema(h['v_model'], sm_alpha)
+        vr = _ema(h['v_reward'], sm_alpha)
+        va = _ema(h['v_action'], sm_alpha)
+        vc = _ema(h['valence'], sm_alpha)
+
+        # ── Row 1: Channel traces ──────────────────────
+        ax = axes[0, col]
+        ax.plot(t, vm, color=_TCOL['backward'], lw=1.2,
+                label='Backward ($v_{model}$)')
+        ax.plot(t, vr, color=_TCOL['present'],  lw=1.2,
+                label='Present ($v_{reward}$)')
+        ax.plot(t, va, color=_TCOL['forward'],  lw=1.2,
+                label='Forward ($v_{action}$)')
+        ax.plot(t, vc, color='k', lw=1.5, ls='--', alpha=0.6,
+                label='Composite')
+        ax.axhline(0, color='gray', lw=0.5, ls=':')
+        ax.set_ylim(-1.1, 1.1)
+        ax.set_title(name.capitalize(), fontsize=12)
+        if col == 0:
+            ax.set_ylabel('Channel value')
+            ax.legend(fontsize=7, loc='lower left')
+
+        # ── Row 2: Normalised temporal orientation ─────
+        ax = axes[1, col]
+        abs_vm = np.abs(vm)
+        abs_vr = np.abs(vr)
+        abs_va = np.abs(va)
+        total = abs_vm + abs_vr + abs_va + 1e-10
+        frac_back = abs_vm / total
+        frac_pres = abs_vr / total
+        frac_fwd  = abs_va / total
+
+        ax.fill_between(t, 0, frac_back,
+                         color=_TCOL['backward'], alpha=0.7, label='Backward')
+        ax.fill_between(t, frac_back, frac_back + frac_pres,
+                         color=_TCOL['present'], alpha=0.7, label='Present')
+        ax.fill_between(t, frac_back + frac_pres, 1.0,
+                         color=_TCOL['forward'], alpha=0.7, label='Forward')
+        ax.set_ylim(0, 1)
+        if col == 0:
+            ax.set_ylabel('Temporal orientation')
+            ax.legend(fontsize=7, loc='lower left')
+
+        # ── Row 3: Summary bars + disagreement ────────
+        ax = axes[2, col]
+        means = [np.mean(np.abs(vm)), np.mean(np.abs(vr)),
+                 np.mean(np.abs(va))]
+        labels = ['Backward', 'Present', 'Forward']
+        colors = [_TCOL['backward'], _TCOL['present'], _TCOL['forward']]
+        ax.bar(labels, means, color=colors, alpha=0.8, width=0.5)
+
+        # Disagreement: fraction of timesteps where backward and forward
+        # channels have opposite signs (temporal conflict)
+        sign_back = np.sign(vm)
+        sign_fwd  = np.sign(va)
+        disagree_frac = np.mean(sign_back != sign_fwd)
+
+        ax.text(0.97, 0.95, f'B-F conflict: {disagree_frac:.0%}',
+                transform=ax.transAxes, ha='right', va='top', fontsize=9,
+                bbox=dict(boxstyle='round,pad=0.3', facecolor='#f5f5f5',
+                          edgecolor='gray', alpha=0.9))
+
+        if col == 0:
+            ax.set_ylabel('Mean |channel|')
+
+    fig.suptitle('Temporal Aiming of Affective Channels',
+                 fontsize=13, y=1.01)
+    plt.tight_layout()
+    if save_path:
+        fig.savefig(save_path, dpi=300, bbox_inches='tight')
+    return fig
+
+
+def plot_temporal_summary(results, save_path=None):
+    """
+    Figure 9: Temporal orientation summary across all emotion profiles.
+
+    Left: Stacked horizontal bars showing the proportion of affect
+          carried by each temporal channel (backward/present/forward).
+    Right: Backward-forward conflict rate for each emotion.
+    """
+    names = list(results.keys())
+    sm_alpha = 0.08
+
+    fracs = {'backward': [], 'present': [], 'forward': []}
+    conflicts = []
+
+    for name in names:
+        h = results[name]
+        vm = _ema(h['v_model'], sm_alpha)
+        vr = _ema(h['v_reward'], sm_alpha)
+        va = _ema(h['v_action'], sm_alpha)
+
+        abs_vm = np.mean(np.abs(vm))
+        abs_vr = np.mean(np.abs(vr))
+        abs_va = np.mean(np.abs(va))
+        total = abs_vm + abs_vr + abs_va + 1e-10
+
+        fracs['backward'].append(abs_vm / total)
+        fracs['present'].append(abs_vr / total)
+        fracs['forward'].append(abs_va / total)
+
+        sign_back = np.sign(vm)
+        sign_fwd  = np.sign(va)
+        conflicts.append(np.mean(sign_back != sign_fwd))
+
+    # Sort by backward fraction (most backward-oriented at top)
+    order = np.argsort(fracs['backward'])[::-1]
+    names_sorted = [names[i] for i in order]
+
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 6),
+                                    gridspec_kw={'width_ratios': [3, 1]})
+
+    y = np.arange(len(names_sorted))
+    b = np.array([fracs['backward'][i] for i in order])
+    p = np.array([fracs['present'][i] for i in order])
+    f = np.array([fracs['forward'][i] for i in order])
+
+    ax1.barh(y, b, color=_TCOL['backward'], alpha=0.8, label='Backward')
+    ax1.barh(y, p, left=b, color=_TCOL['present'], alpha=0.8,
+             label='Present')
+    ax1.barh(y, f, left=b + p, color=_TCOL['forward'], alpha=0.8,
+             label='Forward')
+    ax1.set_yticks(y)
+    ax1.set_yticklabels([n.capitalize() for n in names_sorted])
+    ax1.set_xlabel('Temporal orientation fraction')
+    ax1.set_xlim(0, 1)
+    ax1.legend(fontsize=9, loc='lower right')
+    ax1.set_title('Temporal Orientation by Emotion')
+
+    # Right: conflict bars
+    c_sorted = [conflicts[i] for i in order]
+    cols = [_ECOL.get(n, '#999') for n in names_sorted]
+    ax2.barh(y, c_sorted, color=cols, alpha=0.8)
+    ax2.set_yticks(y)
+    ax2.set_yticklabels([])
+    ax2.set_xlabel('B-F conflict rate')
+    ax2.set_xlim(0, 1)
+    ax2.set_title('Temporal Conflict')
+
+    fig.suptitle('Temporal Aiming Across Emotion Profiles',
+                 fontsize=13, y=1.01)
+    plt.tight_layout()
+    if save_path:
+        fig.savefig(save_path, dpi=300, bbox_inches='tight')
     return fig
