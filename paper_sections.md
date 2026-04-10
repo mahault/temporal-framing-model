@@ -71,35 +71,65 @@ The first three parameters are orthogonal: they affect distinct components of th
 
 ## 4. Affective Readout
 
-Following Pattisapu, Verbelen, Pitliya, Kiefer & Albarracin (2024), we derive both valence and arousal from the agent's free energy, grounding the simulation in a circumplex model of emotion.
+We derive valence and arousal from three complementary channels, each grounding a distinct temporal orientation of the affective signal. The composite readout maps onto the circumplex model of emotion (Russell, 1980).
 
-### 4.1 Valence
+### 4.1 Three-Channel Valence
 
-Valence is computed as a reward prediction error — the difference between the utility of the actual observation and its expected value under the agent's predictive model:
+Valence is decomposed into three channels corresponding to backward, present, and forward temporal orientations — directly mirroring the temporal framing structure of the generative model.
 
-$$V = U - \mathbb{E}[U]$$
+**Channel 1: Model valence (backward).** Following Joffily & Coricelli (2013), model valence tracks the *rate of change* of variational free energy:
 
-where $U = \sum_m \log P(o_m | C_m)$ is the utility of the observed outcome given preferences, and $\mathbb{E}[U] = \sum_m \sum_{o} Q(o_m | \pi) \log P(o_m | C_m)$ is the expected utility under predicted observations $Q(o_m|\pi) = \mathbf{A}_m \, q_{\text{pred}}$. Positive valence signals a "better than expected" outcome; negative valence signals worse than expected.
+$$v_{\text{model}} = \tanh(-\Delta F / \tau_{\text{model}})$$
+
+where $\Delta F = F(t) - F(t{-}1)$. Decreasing free energy (improving model fit) produces positive valence; increasing free energy produces negative valence. This channel is *backward-looking*: it evaluates how well the agent's predictions matched recent observations, and is thus functionally aligned with the RECALL framing mode.
+
+**Channel 2: Reward valence (present).** Following Pattisapu et al. (2024), reward valence captures the momentary reward prediction error:
+
+$$v_{\text{reward}} = \tanh((U - \mathbb{E}[U]) / \tau_{\text{reward}})$$
+
+where $U = \sum_m \log P(o_m | C_m)$ is the utility of the observed outcome given preferences, and $\mathbb{E}[U] = \sum_m \sum_{o} Q(o_m) \log P(o_m | C_m)$ is the expected utility under predicted observations $Q(o_m) = \mathbf{A}_m \, q_{\text{pred}}$. This channel is *present-oriented*: it evaluates how the current observation compares to expectations, and aligns with the ENGAGE framing mode.
+
+**Channel 3: Action valence (forward).** Following Hesp et al. (2021), action valence captures the *affective charge* — the degree to which policy revision is aligned with expected free energy:
+
+$$v_{\text{action}} = \tanh(\text{AC} / \tau_{\text{action}}), \quad \text{AC} = (\boldsymbol{\pi}_{t-1} - \boldsymbol{\pi}_t) \cdot \mathbf{G}$$
+
+where $\boldsymbol{\pi}$ is the policy distribution and $\mathbf{G}$ the expected free energy vector. Positive affective charge indicates that the agent is shifting probability *away from* high-EFE policies (policy improvement); negative charge indicates deterioration. This channel is *forward-looking*: it evaluates whether the agent's planning is improving, and aligns with the FUTURATE framing mode.
+
+**Composite valence.** The three channels are combined into a single bounded signal:
+
+$$V = \tanh(v_{\text{model}} + v_{\text{reward}} + v_{\text{action}})$$
+
+The $\tanh$ bounding ensures $V \in [-1, 1]$ without requiring per-phenotype normalisation, enabling direct comparison across clinical profiles.
 
 ### 4.2 Arousal
 
-Arousal is the entropy of the posterior belief distribution:
+We define two complementary measures of arousal, each capturing a distinct source of uncertainty:
 
-$$A = H[Q(s|o)] = -\sum_s Q(s|o) \log Q(s|o)$$
+**State arousal.** The entropy of the posterior belief distribution:
 
-normalised by maximum entropy $\log |\mathcal{S}|$ to yield $A_{\text{norm}} \in [0, 1]$. High arousal reflects posterior uncertainty — the agent does not know what state it is in — and is functionally linked to the amygdala's role as a learning signal for allostatic regulation (Feldman-Barrett, 2017).
+$$A_{\text{state}} = H[Q(s|o)] = -\sum_s Q(s|o) \log Q(s|o)$$
+
+normalised by $\log |\mathcal{S}|$ to yield $A_{\text{state}} \in [0, 1]$. This measures uncertainty about the current hidden state — functionally linked to the amygdala's role as a learning signal for allostatic regulation (Barrett, 2017).
+
+**Policy arousal.** The entropy of the policy distribution:
+
+$$A_{\text{policy}} = H[Q(\pi)] = -\sum_a Q(a) \log Q(a)$$
+
+normalised by $\log |\mathcal{A}|$ to yield $A_{\text{policy}} \in [0, 1]$. This measures decision uncertainty — the agent's inability to distinguish among actions. While state arousal is uniformly high across phenotypes (due to the large factored state space), policy arousal differentiates sharply: the decisive healthy agent ($A_{\text{policy}} \approx 0.21$) contrasts with the indecisive depressive agent ($A_{\text{policy}} \approx 0.92$) and the moderately focused manic agent ($A_{\text{policy}} \approx 0.45$).
 
 ### 4.3 Circumplex Transformation
 
-To map the agent's trajectory onto the circumplex model, we centre arousal as $A_c = 2 A_{\text{norm}} - 1 \in [-1, 1]$, so that low posterior entropy (certainty) corresponds to calm ($A_c < 0$) and high entropy (uncertainty) corresponds to alertness ($A_c > 0$). The polar transformation $r = \sqrt{V^2 + A_c^2}$, $\theta = \arctan(A_c / V)$ then places the agent's emotional state within the standard circumplex (Russell, 1980), with 0° = Happy, 90° = Alert, 180° = Sad, 270° = Calm.
+To map the agent's trajectory onto the circumplex model, we use composite valence $V$ (horizontal axis) and centred policy arousal $A_c = 2 A_{\text{policy}} - 1 \in [-1, 1]$ (vertical axis), so that low policy entropy (decisiveness) corresponds to calm ($A_c < 0$) and high policy entropy (indecision) corresponds to alertness ($A_c > 0$). The polar transformation $r = \sqrt{V^2 + A_c^2}$, $\theta = \arctan(A_c / V)$ then places the agent's emotional state within the standard circumplex (Russell, 1980), with 0° = Happy, 90° = Alert, 180° = Sad, 270° = Calm.
 
-### 4.4 Temporal Derivatives (Joffily & Coricelli)
+Policy arousal is preferred over state arousal for the circumplex because it captures the *behavioural consequence* of uncertainty: a depressive agent with near-uniform policy selection is behaviourally agitated (high arousal) regardless of how well it can localise its hidden state.
 
-In parallel, we track the variational free energy $F(t)$ at each timestep and compute:
-- **Valence (J-C)**: $\tanh(-\Delta F / \tau)$, capturing the *rate* of free energy change
-- **Anticipation**: $-\Delta^2 F$, capturing curvature — positive for hope, negative for fear
+### 4.4 Anticipation
 
-This dual readout allows us to examine both the *momentary* affective state (Pattisapu: how does the current observation compare to expectation?) and the *trajectory* of affective dynamics (Joffily-Coricelli: is free energy increasing or decreasing over time?).
+In addition to the three-channel valence, we track the second temporal derivative of free energy:
+
+$$\text{Anticipation} = -\Delta^2 F$$
+
+Positive anticipation (concave $F$) corresponds to hope — the agent expects its model fit to continue improving. Negative anticipation (convex $F$) corresponds to fear — deterioration is accelerating. This signal provides a third-order diagnostic of affective trajectory beyond what the three valence channels capture.
 
 
 ## 5. Simulation Design
@@ -138,29 +168,29 @@ We sweep $\pi_{\text{pos}} \in [0.1, 8.0]$ and $\omega_e \in [0.1, 8.0]$ over a 
 
 The three clinical profiles produce qualitatively distinct trajectories (Figure 1).
 
-The **healthy** agent maintains moderate-high mean valence ($\bar{v} = 0.62$) and near-maximal energy ($\bar{e} = 0.97$). Policy selection shows a clear structure: RECALL dominates, supplemented by ENGAGE and periodic REST episodes for energy management. The agent's believed valence tracks the true valence with moderate lag, and the Joffily-Coricelli valence signal oscillates symmetrically around zero, indicating balanced prediction error dynamics (Figure 2, left).
+The **healthy** agent maintains moderate-high mean valence ($\bar{v} = 0.63$) and near-maximal energy ($\bar{e} = 0.97$). Policy selection shows a clear structure: RECALL dominates, supplemented by ENGAGE and periodic REST episodes for energy management. The agent's believed valence tracks the true valence with moderate lag, and the Joffily-Coricelli valence signal oscillates symmetrically around zero, indicating balanced prediction error dynamics (Figure 2, left).
 
-The **depressive** agent exhibits persistently low valence ($\bar{v} = 0.54$) and moderate energy depletion ($\bar{e} = 0.76$). Crucially, policy selection is near-uniform across actions (Figure 1, depressive policy panel) — a direct consequence of anhedonia ($c_{\text{scale}} = 0.1$) flattening the preference vectors and rendering all actions similarly valued under expected free energy. The agent does not preferentially select RECALL or FUTURATE because it cannot distinguish between the hedonic consequences of different actions. Combined with biologically impaired recall effectiveness ($\sigma(\pi_{\text{pos}} - \theta) \approx 0.12$) and attenuated futurate effectiveness ($c_{\text{scale}} = 0.1$), the few recall and futurate attempts that occur have only a 10–12\% chance of improving valence. The result is the pattern described in the abstract: "uncertainty remains diffusely distributed across temporal horizons, as it is neither attenuated through positively biased autobiographical counterfactuals nor reduced via optimistic prospective counterfactuals." The energy depletion reflects a secondary mechanism: persistently low valence triggers motivational fatigue (the bidirectional valence–energy coupling), further reducing the agent's capacity for effective action.
+The **depressive** agent exhibits persistently low valence ($\bar{v} = 0.51$) and substantial energy depletion ($\bar{e} = 0.68$). Crucially, policy selection is near-uniform across actions (Figure 1, depressive policy panel) — a direct consequence of anhedonia ($c_{\text{scale}} = 0.1$) flattening the preference vectors and rendering all actions similarly valued under expected free energy. The agent does not preferentially select RECALL or FUTURATE because it cannot distinguish between the hedonic consequences of different actions. Combined with biologically impaired recall effectiveness ($\sigma(\pi_{\text{pos}} - \theta) \approx 0.12$) and attenuated futurate effectiveness ($c_{\text{scale}} = 0.1$), the few recall and futurate attempts that occur have only a 10–12\% chance of improving valence. The result is the pattern described in the abstract: "uncertainty remains diffusely distributed across temporal horizons, as it is neither attenuated through positively biased autobiographical counterfactuals nor reduced via optimistic prospective counterfactuals." The energy depletion reflects a secondary mechanism: persistently low valence triggers motivational fatigue (the bidirectional valence–energy coupling), further reducing the agent's capacity for effective action.
 
-The **manic** agent shows the highest mean valence ($\bar{v} = 0.72$) but the lowest energy ($\bar{e} = 0.66$) — the characteristic manic dissociation between subjective well-being and objective resource depletion. The agent's hypersensitive reward processing ($c_{\text{scale}} = 2.0$) drives aggressive selection of RECALL and FUTURATE, both of which are effective for valence (recall effectiveness $\approx 0.95$, futurate effectiveness $= 1.0$). However, FUTURATE incurs a steep energy cost that the agent cannot detect due to blurred interoception ($\omega_e = 0.5$). The energy trace shows periods of depletion followed by partial recovery when the agent's beliefs eventually catch up to reality and REST is selected, producing the oscillatory pattern characteristic of bipolar cycling. The Joffily-Coricelli F(t) trace is notably flat (Figure 2, right), reflecting that the manic agent's overconfident model is largely impervious to prediction errors — a computational correlate of the clinical observation that manic patients report subjective wellbeing even as their behaviour becomes increasingly dysregulated.
+The **manic** agent shows the highest mean valence ($\bar{v} = 0.71$) but the lowest energy ($\bar{e} = 0.58$) — the characteristic manic dissociation between subjective well-being and objective resource depletion. The agent's hypersensitive reward processing ($c_{\text{scale}} = 2.0$) drives aggressive selection of RECALL and FUTURATE, both of which are effective for valence (recall effectiveness $\approx 0.95$, futurate effectiveness $= 1.0$). However, FUTURATE incurs a steep energy cost that the agent cannot detect due to blurred interoception ($\omega_e = 0.5$). The energy trace shows periods of depletion followed by partial recovery when the agent's beliefs eventually catch up to reality and REST is selected, producing the oscillatory pattern characteristic of bipolar cycling. The Joffily-Coricelli F(t) trace is notably flat (Figure 2, right), reflecting that the manic agent's overconfident model is largely impervious to prediction errors — a computational correlate of the clinical observation that manic patients report subjective wellbeing even as their behaviour becomes increasingly dysregulated.
 
 ### 6.2 Granularity and Oscillation Dynamics
 
 The granularity sweep (Figure 3) provides direct computational evidence for the abstract's claim that "reduced granularity in higher-order belief distributions constrains the generation of future-oriented counterfactuals for resolving uncertainty."
 
-Valence variance decreases with granularity: $0.10$ at $K{=}2$, $0.039$ at $K{=}4$, $0.035$ at $K{=}6$, and $0.037$ at $K{=}8$ — a near three-fold reduction from the coarsest to the finest resolution, with diminishing returns above $K{=}4$. The jump-size distribution (Figure 3c) is heavy-tailed at $K{=}2$, with substantial mass at large $|\Delta v|$ values (catastrophic transitions), whereas for $K \geq 4$ it concentrates near zero. In active inference terms, this corresponds to the difference between a transition matrix $\mathbf{B}_v$ that forces jumps between distant attractor basins and one that supports gradual belief updating across a smooth landscape.
+Valence variance decreases with granularity: $0.109$ at $K{=}2$, $0.042$ at $K{=}4$, $0.034$ at $K{=}6$, and $0.032$ at $K{=}8$ — a near three-fold reduction from the coarsest to the finest resolution, with diminishing returns above $K{=}4$. The jump-size distribution (Figure 3c) is heavy-tailed at $K{=}2$, with substantial mass at large $|\Delta v|$ values (catastrophic transitions), whereas for $K \geq 4$ it concentrates near zero. In active inference terms, this corresponds to the difference between a transition matrix $\mathbf{B}_v$ that forces jumps between distant attractor basins and one that supports gradual belief updating across a smooth landscape.
 
 This result formalises the clinical observation that emotional granularity — the ability to make fine-grained distinctions among affective states — is a protective factor against mood instability (Barrett, 2017). In our model, the protection is mechanistic: higher $K$ increases the resolution of both the $\mathbf{B}_v$ matrix and the $\mathbf{A}_{\text{val}}$ observation model, enabling the agent to make smaller steps through the affective landscape rather than being forced into all-or-nothing transitions.
 
 ### 6.3 Circumplex Emotional Trajectories
 
-Mapping valence and arousal onto the circumplex (Figure 6) reveals distinct emotional signatures for each phenotype.
+Mapping three-channel valence and policy arousal onto the circumplex (Figure 6) reveals qualitatively distinct emotional signatures that directly reflect each phenotype's computational profile.
 
-The **healthy** agent's trajectory occupies a compact region near the Happy–Excited boundary (positive valence, moderate arousal), reflecting an engaged agent whose outcomes regularly exceed expectations while maintaining moderate posterior uncertainty — consistent with adaptive exploration.
+The **healthy** agent's trajectory occupies the lower half of the circumplex (Calm–Happy–Content region), reflecting moderate positive valence and low policy arousal. The low arousal is a direct consequence of decisive policy selection: RECALL dominates the healthy agent's policy distribution, producing a peaked $Q(\pi)$ with low entropy. This agent knows what to do and feels good about doing it.
 
-The **depressive** agent shows the widest spread across the circumplex, reaching into the Alert–Angry and Sad–Depressed quadrants. This dispersed trajectory reflects emotional instability: the agent's near-random policy selection produces unpredictable outcomes, generating high variance in reward prediction error (valence) while posterior uncertainty fluctuates with the changing quality of observations. The wide circumplex occupancy — in contrast to the compact healthy trajectory — is consistent with clinical findings of affect instability in depression (Houben et al., 2015).
+The **depressive** agent occupies the upper half of the circumplex (Alert–Tense region), with valence centred near zero and high policy arousal. The near-maximal arousal reflects policy indecision: anhedonia ($c_{\text{scale}} = 0.1$) flattens the expected free energy landscape, rendering all actions approximately equivalent and producing a near-uniform policy distribution. This computational signature — high uncertainty without directional valence — matches the clinical presentation of agitated depression and is consistent with findings linking affect instability to near-random temporal framing (Houben et al., 2015).
 
-The **manic** agent occupies a narrow band near the Excited–Happy region (high valence, moderate arousal). The tight clustering reflects the agent's reward hypersensitivity amplifying positive prediction errors while the blurred interoceptive model prevents the energy depletion signal from broadening the arousal distribution. This is consistent with the clinical picture of mania as a state of elevated, relatively stable positive affect that masks deteriorating metabolic resources.
+The **manic** agent spreads across the right half of the circumplex (positive valence), with arousal oscillating between moderate and low. The positive valence reflects the combined contribution of all three channels: high $v_{\text{reward}}$ (reward hypersensitivity amplifies positive prediction errors), high $v_{\text{model}}$ during periods of stable overconfidence, and intermittent $v_{\text{action}}$ as the agent shifts between RECALL and FUTURATE. The oscillating arousal captures the characteristic manic pattern of alternating between focused pursuit (low policy entropy during FUTURATE bursts) and momentary indecision (higher entropy during frame transitions).
 
 ### 6.4 Parameter Landscape
 
@@ -199,11 +229,17 @@ The inclusion of energy as a latent state enables bipolar cycling to emerge from
 
 This switching dynamical system structure — driven by the interaction between miscalibrated interoceptive precision ($\omega_e$) and amplified reward sensitivity ($c_{\text{scale}}$) over a metabolic self-model constraint — resonates with clinical accounts of bipolar disorder as a disorder of energy regulation (Berk et al., 2007). The model predicts that interventions targeting interoceptive accuracy (e.g., interoceptive training, somatic therapies) would reduce oscillation amplitude independently of interventions targeting narrative capacity ($\pi_{\text{pos}}$), reward sensitivity ($c_{\text{scale}}$), or emotional granularity ($K$).
 
-### 7.5 Two Formulations of Valence
+### 7.5 Three Channels of Valence and Temporal Framing
 
-The dual affective readout — Pattisapu et al.'s reward prediction error ($V = U - \mathbb{E}[U]$) alongside Joffily & Coricelli's temporal derivative ($-\dot{F}$) — reveals complementary aspects of affective dynamics. The Pattisapu formulation captures the *momentary* surprise of an outcome relative to expectations, and when combined with posterior entropy as arousal, provides the two-dimensional circumplex representation needed to distinguish states (like anger vs. sadness) that share valence but differ in arousal. The Joffily-Coricelli formulation captures the *trajectory* — whether things are getting better or worse over time — and its second derivative yields anticipatory emotions (hope, fear) that are central to the temporal framing account.
+The three-channel valence decomposition is not merely a technical convenience; it exposes a structural correspondence between affective signals and the temporal framing modes at the heart of the model.
 
-In the healthy agent, these two signals are correlated but not redundant. In pathological regimes, they dissociate: the manic agent shows a flat F(t) trajectory (the overconfident model barely updates) alongside oscillating Pattisapu valence (actual outcomes fluctuate relative to inflated expectations). The depressive agent shows rising F(t) (model fit worsens over time as beliefs diverge from the deteriorating true state) alongside dampened Pattisapu valence (anhedonia compresses the reward prediction error signal). These dissociations — between trajectory-level and moment-level affect — may correspond to clinically observable differences in how patients report their emotional experience versus how their affective dynamics unfold over time.
+- **$v_{\text{model}}$ ↔ RECALL**: Both are backward-looking. Model valence evaluates how well past predictions match current observations; RECALL recruits past counterfactuals to stabilise present affect. When $v_{\text{model}}$ is persistently negative (the depressive agent's rising $F(t)$), it signals that the generative model is losing its grip on the environment — exactly the condition under which RECALL would be adaptive, if the agent could execute it.
+
+- **$v_{\text{reward}}$ ↔ ENGAGE**: Both are present-oriented. Reward valence evaluates the immediate outcome relative to expectations; ENGAGE is standard perception–action coupling. In the depressive agent, anhedonia compresses $v_{\text{reward}}$ toward zero, flattening the distinction between good and bad outcomes and undermining the primary feedback signal for adaptive engagement.
+
+- **$v_{\text{action}}$ ↔ FUTURATE**: Both are forward-looking. Action valence evaluates whether the agent's planning is improving; FUTURATE generates prospective counterfactuals to motivate goal pursuit. In the manic agent, $v_{\text{action}}$ captures the characteristic pattern of rapid policy shifts driven by reward hypersensitivity — the affective signature of someone who is always "about to do something great."
+
+In pathological regimes, the channels dissociate in clinically informative ways. The manic agent shows flat $v_{\text{model}}$ (the overconfident model barely updates), saturating $v_{\text{reward}}$ (reward hypersensitivity amplifies every prediction error), and intermittent $v_{\text{action}}$ (rapid policy switching). The depressive agent shows near-zero $v_{\text{reward}}$ (anhedonia), near-zero $v_{\text{action}}$ (policy stagnation due to indecision), and weakly negative $v_{\text{model}}$ (slowly worsening model fit). These dissociations are directly observable in the simulation and could in principle be mapped to neural or experiential signatures in clinical populations.
 
 ### 7.6 Limitations and Future Directions
 
@@ -227,7 +263,7 @@ Finally, while the granularity sweep provides a clear computational prediction (
 
 **Figure 5. Phase portraits: valence $\times$ energy.** Each panel plots EMA-smoothed believed valence against true energy over time, with colour encoding timestep (purple = early, yellow = late). The healthy agent occupies a tight cluster at high energy with moderate valence spread (stable dynamics). The depressive agent wanders widely across the state space (emotional instability driven by near-random policy). The manic agent shows a characteristic vertical spread — high valence across a wide energy range — reflecting the dissociation between subjective wellbeing and metabolic depletion. Green circle = start; red square = end.
 
-**Figure 6. Circumplex emotional trajectories (Pattisapu et al., 2024).** Polar plots of the affective trajectory in Pattisapu circumplex space (horizontal: valence as reward prediction error $V = U - \mathbb{E}[U]$; vertical: centred arousal $A_c = 2 H_{\text{norm}} - 1$). Emotion labels (Happy, Excited, Alert, Angry, Sad, Depressed, Calm, Relaxed) are placed at standard circumplex angles. The healthy agent occupies a compact region near Happy/Excited. The depressive agent shows the widest circumplex occupancy, extending into Angry, Sad, and Depressed quadrants — consistent with affect instability findings. The manic agent clusters tightly near Excited/Happy, reflecting elevated but narrowly distributed positive affect. R-limits are shared across panels for direct comparison. Colour encodes timestep (viridis colourmap).
+**Figure 6. Circumplex emotional trajectories.** Polar plots of composite three-channel valence ($V = \tanh(v_{\text{model}} + v_{\text{reward}} + v_{\text{action}})$; horizontal axis) and centred policy arousal ($A_c = 2 H_{\text{policy}} / \log|\mathcal{A}| - 1$; vertical axis). The healthy agent occupies the Calm–Happy region (decisive policy, moderate positive valence). The depressive agent clusters in the Alert–Tense region (near-maximal policy entropy from anhedonic indecision, valence near zero). The manic agent spreads across the right half (positive valence from reward hypersensitivity, oscillating arousal as focus shifts between RECALL and FUTURATE bursts). Colour encodes timestep (purple = early, yellow = late); shared $r$-limits across panels.
 
 ---
 
