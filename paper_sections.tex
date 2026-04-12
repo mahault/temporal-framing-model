@@ -213,14 +213,22 @@ The phase portrait (Figure~\ref{fig:phase}) further reveals the dynamical charac
 
 The granularity sweep (Figure~\ref{fig:granularity}) provides direct computational evidence for the abstract's claim that ``reduced granularity in higher-order belief distributions constrains the generation of future-oriented counterfactuals for resolving uncertainty.''
 
-Valence variance decreases with granularity: $0.109$ at $K{=}2$, $0.042$ at $K{=}4$, $0.034$ at $K{=}6$, and $0.032$ at $K{=}8$---a near three-fold reduction from the coarsest to the finest resolution, with diminishing returns above $K{=}4$. The jump-size distribution is heavy-tailed at $K{=}2$ (catastrophic transitions), whereas for $K \geq 4$ it concentrates near zero.
+Valence variance decreases with granularity: $0.106$ at $K{=}2$, $0.038$ at $K{=}4$, $0.034$ at $K{=}6$, and $0.034$ at $K{=}8$---a near three-fold reduction from the coarsest to the finest resolution, with diminishing returns above $K{=}4$. The jump-size distribution is heavy-tailed at $K{=}2$ (catastrophic transitions), whereas for $K \geq 4$ it concentrates near zero.
 
 This result formalises the clinical observation that emotional granularity is a protective factor against mood instability \citep{barrett2017theory}. In our model, the protection is mechanistic: higher $K$ increases the resolution of both the $\mathbf{B}_v$ matrix and the $\mathbf{A}_{\text{val}}$ observation model, enabling smaller steps through the affective landscape rather than all-or-nothing transitions.
+
+\paragraph{FUTURATE effectiveness across granularity (Figure~\ref{fig:granularity}e).}
+To isolate the abstract's claim that ``reduced granularity \ldots constrains the generation of future-oriented counterfactuals,'' we extract the mean absolute valence change $|\Delta v|$ at timesteps where the agent selects FUTURATE, conditioned on $K$. At $K{=}2$, each FUTURATE attempt produces coarse valence jumps ($|\Delta v| = 0.245 \pm 0.047$), reflecting the all-or-nothing transitions inherent to a binary affective state space. As granularity increases, FUTURATE-conditioned jumps shrink: $0.159 \pm 0.031$ at $K{=}4$, $0.177 \pm 0.027$ at $K{=}6$, and $0.171 \pm 0.020$ at $K{=}8$---converging to a stable regime where fine-grained intermediate states allow smooth regulation rather than catastrophic transitions. Crucially, the FUTURATE selection proportion remains stable across $K$ ($\approx$8--13\%), confirming that the effect is driven by state-space resolution, not differential action selection.
+
+\paragraph{Elaboration versus nuance (Figure~\ref{fig:granularity}f).}
+The abstract claims that low-granularity agents produce ``elaborate, but weakly nuanced, narratives.'' We operationalise these constructs as follows. \emph{Elaboration} is the action switching rate---the fraction of timesteps at which the agent changes its temporal framing mode---capturing the degree to which the agent actively recruits different temporal strategies. \emph{Nuance} is the number of distinct valence states the agent actually visits, measured by quantising believed valence into $K$ bins (matching the representational granularity) and counting unique occupied bins.
+
+The dissociation is striking: elaboration remains stable across granularity ($0.52$ at $K{=}2$, $0.61$ at $K{=}4$, $0.57$ at $K{=}6$, $0.61$ at $K{=}8$), confirming that the agent actively recruits diverse temporal strategies regardless of state-space resolution. In contrast, nuance scales directly with $K$: the agent visits only $2.0$ of $2$ possible states at $K{=}2$, but $4.0/4$, $5.0/6$, and $7.0/8$ at higher granularities. At low $K$, the agent's full repertoire of strategies (RECALL, FUTURATE, ENGAGE, REST) maps onto only two distinguishable affective outcomes---the computational signature of ``elaborate but weakly nuanced'' narratives. At high $K$, the same strategic diversity produces a rich landscape of intermediate affective states, enabling context-sensitive regulation.
 
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=\textwidth]{figures/fig3_granularity.png}
-    \caption{\textbf{Effect of affective granularity on oscillation dynamics.} Fixed parameters: $\pi_{\text{pos}} = 3.0$, $\omega_e = 0.8$, $c_{\text{scale}} = 1.0$; $K \in \{2, 4, 6, 8\}$, 5 runs each. (a) Valence trajectories (EMA-smoothed). (b) Valence variance: $K{=}2$ shows substantially higher oscillation than $K \geq 4$. (c) Jump-size distribution: $K{=}2$ has a heavy tail (catastrophic transitions). (d) Action selection proportions: RECALL dominates across all $K$.}
+    \caption{\textbf{Effect of affective granularity on oscillation dynamics.} Fixed parameters: $\pi_{\text{pos}} = 3.0$, $\omega_e = 0.8$, $c_{\text{scale}} = 1.0$; $K \in \{2, 4, 6, 8\}$, 5 runs each. (a) Valence trajectories (EMA-smoothed). (b) Valence variance: $K{=}2$ shows substantially higher oscillation than $K \geq 4$. (c) Jump-size distribution: $K{=}2$ has a heavy tail (catastrophic transitions). (d) Action selection proportions: RECALL dominates across all $K$. (e) FUTURATE effectiveness: mean $|\Delta v|$ conditioned on FUTURATE selection, per $K$; dashed line shows FUTURATE selection proportion (right axis). (f) Elaboration (action switching rate, bars) vs nuance (distinct valence states visited, line): at low $K$, elaboration persists while nuance collapses.}
     \label{fig:granularity}
 \end{figure}
 
@@ -298,6 +306,24 @@ This analysis operationalises the temporal aiming framework from the affect lite
 \end{figure}
 
 
+\subsection{Feedback Reliance Under Recall Impairment}
+
+The abstract claims that ``reduced precision in higher-order positive beliefs \ldots leading to an increased reliance on external positive feedback for affective regulation.'' To test this claim in isolation, we compare two profiles with \emph{identical} reward sensitivity ($c_{\text{scale}} = 1.0$) and granularity ($K = 8$), differing only in positive-belief precision: \textbf{healthy} ($\pi_{\text{pos}} = 5.0$) versus \textbf{recall-impaired} ($\pi_{\text{pos}} = 0.2$). Both agents can feel rewards (normal $c_{\text{scale}}$) and have fine-grained affective states (high $K$); the only difference is whether RECALL is biologically effective.
+
+Figure~\ref{fig:feedback_reliance} reveals the compensatory shift. The healthy agent distributes its policy between RECALL (41\%) and REST (59\%), with RECALL serving as the primary affective regulation strategy. The recall-impaired agent shows a dramatic collapse of RECALL utilisation (from 41\% to 7\%), with the freed probability mass reallocating predominantly to REST (87\%). The recall-impaired agent also shows emergent FUTURATE selection (6\% vs 0\%)---when backward-looking counterfactuals fail, the agent partially compensates through forward-looking strategies, consistent with the abstract's prediction. However, the dominant compensatory strategy is conservation (REST) rather than active engagement, suggesting that without the anchoring effect of positive autobiographical counterfactuals, the expected free energy landscape favours withdrawal over exploratory action.
+
+The valence trajectories confirm the functional cost: the recall-impaired agent maintains substantially lower mean valence ($\bar{v} = 0.52$ vs $0.63$) despite identical reward sensitivity, demonstrating that RECALL impairment alone---independent of anhedonia---is sufficient to reduce affective wellbeing. This reduction is driven by two reinforcing mechanisms: the loss of RECALL's positive-valence pull, and the increased reliance on REST, which drives valence toward neutral rather than positive states.
+
+Policy entropy is modestly elevated in the recall-impaired agent ($0.25$ vs $0.23$), reflecting reduced decisiveness. Without an effective RECALL option, the agent's expected free energy landscape is flatter across the remaining policies, producing less peaked policy selection. The effect is smaller than in the depressive profile (where $c_{\text{scale}} = 0.1$ collapses policy precision entirely), confirming that recall impairment and anhedonia are computationally distinct mechanisms that contribute additively to the depressive phenotype.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\textwidth]{figures/fig10_feedback_reliance.png}
+    \caption{\textbf{Feedback reliance under recall impairment.} Both profiles share $c_{\text{scale}} = 1.0$, $K = 8$, $\omega_e = 5.0$, $\gamma = 16$; they differ only in $\pi_{\text{pos}}$ (5.0 vs 0.2). (a) Action proportions: the recall-impaired agent's RECALL drops from 41\% to 7\%, with compensatory REST increase (59\% to 87\%) and emergent FUTURATE (0\% to 6\%). (b) Valence trajectories: recall impairment reduces mean valence ($0.52$ vs $0.63$) despite intact reward sensitivity. (c) Policy entropy: the recall-impaired agent is modestly less decisive.}
+    \label{fig:feedback_reliance}
+\end{figure}
+
+
 \section{Discussion}\label{sec:discussion}
 
 \subsection{Narrative Regulation as Policy Selection}
@@ -316,7 +342,15 @@ Conversely, the manic agent's elevated $c_{\text{scale}}$ corresponds to reward 
 
 The granularity parameter $K$ captures a vulnerability dimension orthogonal to both positive-belief precision and interoceptive accuracy. Low $K$ is not a mood state but a structural property of the generative model---it constrains the \emph{resolution} at which affect can be represented. Importantly, $K$ also determines the precision of $\mathbf{A}_{\text{val}}$: lower granularity means blurred self-observation of affect, so that negative priors persist longer.
 
-This has direct implications for intervention. Increasing emotional granularity (through psychoeducation, mindfulness, or affect labelling) changes the \emph{dimensionality of the space} in which affective regulation occurs and the \emph{precision} of affective self-monitoring. Our simulation shows that this alone reduces oscillation amplitude approximately three-fold.
+The elaboration--nuance dissociation (Figure~\ref{fig:granularity}f) provides a precise computational operationalisation of a clinical observation that has resisted formal treatment: patients with low emotional granularity often report rich and varied narratives about their experience, yet these narratives fail to produce correspondingly diverse affective outcomes \citep{barrett2017theory}. In our model, the mechanism is transparent: the agent's \emph{policy space} (four temporal framing modes) is independent of its \emph{state space} ($K$ valence levels). A low-$K$ agent switches strategies just as frequently as a high-$K$ agent (elaboration $\approx 0.52$--$0.61$ across all $K$), but the two distinguishable valence states at $K{=}2$ cannot express the subtle affective differences that eight states at $K{=}8$ can. The narratives are structurally elaborate but affectively impoverished---not because the agent lacks strategic diversity, but because the affective landscape onto which those strategies project is too coarse to register their differential effects.
+
+This has direct implications for intervention. Increasing emotional granularity (through psychoeducation, mindfulness, or affect labelling) changes the \emph{dimensionality of the space} in which affective regulation occurs and the \emph{precision} of affective self-monitoring. Our simulation shows that this alone reduces oscillation amplitude approximately three-fold and increases the number of distinguishable affective states from $2$ to $7$.
+
+\subsection{Recall Impairment and Compensatory Conservation}
+
+The feedback reliance experiment (Figure~\ref{fig:feedback_reliance}) isolates the effect of $\pi_{\text{pos}}$ from anhedonia, revealing that recall impairment alone produces a distinctive compensatory pattern: the agent defaults to conservation (REST) rather than active engagement. This result clarifies the computational pathway from impaired positive-belief precision to behavioural withdrawal. When RECALL cannot sustain positive affect, the expected free energy landscape shifts: the RECALL policy's predicted valence gain is diminished, while its energy cost remains unchanged. REST, which reliably restores energy and drifts valence toward neutral, becomes the dominant policy by default---not through active avoidance, but through the elimination of a competing attractor.
+
+The modest emergence of FUTURATE selection in the recall-impaired agent (6\% vs 0\%) suggests a partial compensatory mechanism: when backward-looking counterfactuals fail, the agent can redirect toward forward-looking strategies if reward sensitivity is intact ($c_{\text{scale}} = 1.0$). In the full depressive profile, this compensatory pathway is blocked by anhedonia ($c_{\text{scale}} = 0.1$), which eliminates the hedonic impact of prospective simulation. The depressive phenotype thus represents a double dissociation: recall impairment removes the backward regulatory mechanism, while anhedonia removes the forward compensatory pathway, leaving the agent with no effective means of counterfactual affect regulation.
 
 \subsection{The Energy Budget and Bipolar Oscillation}
 

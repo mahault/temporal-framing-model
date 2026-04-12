@@ -79,6 +79,9 @@ def run_trial(K=8, M=5, pi_pos=5.0, omega_e=5.0, gamma=16.0, c_scale=1.0,
         hist['arousal_p'][t] = info['arousal_p']
         hist['arousal_norm'][t] = info['arousal_norm']
         hist['policy_entropy_norm'][t] = info['policy_entropy_norm']
+        # Frame beliefs: marginalise joint over valence and energy
+        f_marg = joint.sum(axis=(0, 1))   # Shape: (3,) — [P(PAST), P(PRESENT), P(FUTURE)]
+        hist['frame_belief'][t] = f_marg
 
     # Second derivative → anticipation
     hist['d2F'] = np.diff(hist['dF'], prepend=hist['dF'][0])
@@ -112,6 +115,7 @@ def _make_history(T, K):
         arousal_p      = np.zeros(T),
         arousal_norm   = np.zeros(T),
         policy_entropy_norm = np.zeros(T),
+        frame_belief   = np.zeros((T, 3)),
     )
 
 
@@ -231,4 +235,86 @@ def run_emotion_validation(T=300, seed=42):
     for name, prof in EMOTION_PROFILES.items():
         h = run_trial(**prof, T=T, seed=seed)
         results[name] = h
+    return results
+
+
+# ── Experiment 5: feedback reliance (Gap 2) ─────────────
+FEEDBACK_PROFILES = {
+    'healthy': dict(
+        K=8, M=8, pi_pos=5.0, omega_e=5.0, gamma=16.0, c_scale=1.0,
+        desc='Intact recall, normal reward sensitivity',
+    ),
+    'recall_impaired': dict(
+        K=8, M=8, pi_pos=0.2, omega_e=5.0, gamma=16.0, c_scale=1.0,
+        desc='Impaired recall only — same c_scale, same K',
+    ),
+}
+
+
+def run_feedback_reliance_experiment(T=300, seed=42):
+    """
+    Gap 2: Isolate the effect of recall impairment on feedback reliance.
+
+    Both profiles have identical c_scale=1.0 and K=8, so the agent CAN
+    feel rewards and HAS fine-grained states. The only difference is
+    pi_pos: healthy=5.0 vs recall_impaired=0.2.
+
+    Expected: recall_impaired shifts toward ENGAGE (external feedback)
+    because RECALL is biologically ineffective.
+    """
+    results = {}
+    for name, prof in FEEDBACK_PROFILES.items():
+        print(f"    {name} …", end=" ", flush=True)
+        results[name] = run_trial(**prof, T=T, seed=seed)
+        mv = np.mean(results[name]['valence_belief'])
+        print(f"mean_v={mv:.3f}")
+    return results
+
+
+# ── Experiment 6: chronic stress (Gap D) ─────────────────
+STRESS_PROFILES = {
+    'healthy': dict(
+        K=8, M=8, pi_pos=5.0, omega_e=5.0, gamma=16.0, c_scale=1.0,
+        volatility=0.3,
+        desc='Balanced precision, low-volatility environment',
+    ),
+    'stressed': dict(
+        K=8, M=8, pi_pos=3.0, omega_e=0.5, gamma=16.0, c_scale=2.0,
+        volatility=0.7,
+        desc='Chronic stress: high volatility + reward hypersensitivity '
+             '+ stress-impaired interoception → future overmentalising',
+    ),
+}
+
+
+def run_chronic_stress_experiment(T=300, seed=42):
+    """
+    Gap D: Chronic stress as maladaptive stabilisation of future framing.
+
+    The stressed agent has:
+      - pi_pos=3.0: RECALL works moderately (not blocked like depressive)
+      - c_scale=2.0: reward hypersensitivity makes FUTURATE attractive
+        (amplified C vectors increase EFE risk reduction in valence modality)
+      - omega_e=0.5: stress-impaired interoception -- chronic stress reduces
+        interoceptive accuracy (clinically: alexithymia under stress), which
+        prevents the energy-depletion risk term from deterring FUTURATE
+      - volatility=0.7: chronically stressful environment
+
+    Under standard EFE policy selection pi(a) ~ exp(-gamma * G(a)),
+    FUTURATE becomes competitive when the interoceptive A matrix is
+    blurred: the agent cannot predict energy depletion, so the o_int
+    risk term no longer penalises FUTURATE. Combined with high c_scale
+    amplifying the valence risk reduction, FUTURATE enters the policy mix.
+
+    Expected: The stressed agent shows elevated FUTURATE selection and
+    future frame belief, with lower v_model (backward channel) reflecting
+    chronic model-fit deterioration from the volatile environment.
+    """
+    results = {}
+    for name, prof in STRESS_PROFILES.items():
+        print(f"    {name} …", end=" ", flush=True)
+        results[name] = run_trial(**prof, T=T, seed=seed)
+        mv = np.mean(results[name]['valence_belief'])
+        mfb = np.mean(results[name]['frame_belief'], axis=0)
+        print(f"mean_v={mv:.3f}  frame_belief=[{mfb[0]:.2f}, {mfb[1]:.2f}, {mfb[2]:.2f}]")
     return results

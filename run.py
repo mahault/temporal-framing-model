@@ -16,11 +16,15 @@ sys.path.insert(0, os.path.dirname(__file__))
 from experiments import (run_phenotype_experiment,
                          run_granularity_experiment,
                          run_parameter_sweep,
-                         run_emotion_validation)
+                         run_emotion_validation,
+                         run_feedback_reliance_experiment,
+                         run_chronic_stress_experiment)
 from plotting import (plot_phenotypes, plot_joffily, plot_granularity,
                       plot_parameter_space, plot_phase_portrait,
                       plot_circumplex, plot_emotion_validation,
-                      plot_temporal_aiming, plot_temporal_summary)
+                      plot_temporal_aiming, plot_temporal_summary,
+                      plot_feedback_reliance, plot_framing_dynamics,
+                      plot_chronic_stress)
 
 
 def main():
@@ -36,9 +40,11 @@ def main():
     print(sep)
     print("  Counterfactual Temporal Framing — Simulation Suite")
     print(sep)
+    print(f"  Mode: {'quick' if quick else 'full'}  T={T}")
+    print(sep)
 
     # ── 1. Phenotype comparison ────────────────────────────
-    print("\n[1/5] Phenotype experiment …")
+    print("\n[1/8] Phenotype experiment …")
     pheno = run_phenotype_experiment(T=T, seed=42)
     plot_phenotypes(pheno,    save_path=f'{out}/fig1_phenotypes.png')
     plot_joffily(pheno,       save_path=f'{out}/fig2_joffily.png')
@@ -48,27 +54,44 @@ def main():
     print("       -> fig1, fig2, fig5, fig6, fig8 saved")
 
     # ── 2. Granularity sweep ───────────────────────────────
-    print("\n[2/5] Granularity sweep …")
+    print("\n[2/8] Granularity sweep …")
     gran = run_granularity_experiment(T=T, n_runs=n_r, base_seed=42)
     plot_granularity(gran, save_path=f'{out}/fig3_granularity.png')
-    print("       -> fig3 saved")
+    print("       -> fig3 saved (3×2: includes FUTURATE effectiveness + elaboration/nuance)")
 
     # ── 3. Parameter landscape ─────────────────────────────
-    print("\n[3/5] Parameter sweep …")
+    print("\n[3/8] Parameter sweep …")
     sweep = run_parameter_sweep(T=T, seed=42, n_pi=n_g, n_omega=n_g)
     plot_parameter_space(sweep, save_path=f'{out}/fig4_parameter_space.png')
     print("       -> fig4 saved")
 
     # ── 4. Emotion validation ─────────────────────────────
-    print("\n[4/5] Emotion validation …")
+    print("\n[4/8] Emotion validation …")
     emo = run_emotion_validation(T=T, seed=42)
     plot_emotion_validation(emo, save_path=f'{out}/fig7_emotion_validation.png')
     print("       -> fig7, fig7_projections saved")
 
     # ── 5. Temporal aiming across all emotions ──────────────
-    print("\n[5/5] Temporal aiming (all emotions) …")
+    print("\n[5/8] Temporal aiming (all emotions) …")
     plot_temporal_summary(emo, save_path=f'{out}/fig9_temporal_summary.png')
     print("       -> fig9 saved")
+
+    # ── 6. Feedback reliance (Gap 2) ────────────────────────
+    print("\n[6/8] Feedback reliance experiment …")
+    fb = run_feedback_reliance_experiment(T=T, seed=42)
+    plot_feedback_reliance(fb, save_path=f'{out}/fig10_feedback_reliance.png')
+    print("       -> fig10 saved")
+
+    # ── 7. Framing dynamics (Gaps A, B, C) ──────────────────
+    print("\n[7/8] Framing dynamics …")
+    plot_framing_dynamics(pheno, save_path=f'{out}/fig11_framing_dynamics.png')
+    print("       -> fig11 saved")
+
+    # ── 8. Chronic stress (Gap D) ──────────────────────────
+    print("\n[8/8] Chronic stress experiment …")
+    stress = run_chronic_stress_experiment(T=T, seed=42)
+    plot_chronic_stress(stress, save_path=f'{out}/fig12_chronic_stress.png')
+    print("       -> fig12 saved")
 
     print(f"\n{sep}")
     print(f"  All figures saved to {out}/")
