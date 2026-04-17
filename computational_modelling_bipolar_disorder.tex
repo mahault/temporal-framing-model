@@ -1,0 +1,433 @@
+\documentclass[11pt,a4paper]{article}
+
+% ── Packages ──────────────────────────────────────────────
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage[round]{natbib}
+\usepackage{hyperref}
+\usepackage[margin=2.5cm]{geometry}
+
+% ── Title ─────────────────────────────────────────────────
+\title{Computational Modelling of Bipolar Disorder}
+\author{Mahault Albarracin}
+\date{}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Bipolar disorder is a chronic, recurrent condition characterised by fluctuations in mood and energy. Within predictive processing, depressive and manic states are modelled as maladaptive higher-order expectations of positive or negative valence. Existing models account for how such priors are inferred through agent--environment interactions; however, they do not fully capture the within-agent narrative processes sustaining coarse affective states, nor how these narrative processes are shaped by developmental history. In this paper, we formalise two complementary computational mechanisms underlying the narrative regulation of affect. First, the precision assigned to positively valenced beliefs about the self and the world. Second, the granularity of the higher-order state space over which affective beliefs are represented. We show that variation along these dimensions modulates the agent's capacity to recruit past and future counterfactual trajectories stabilising affective states under conditions of environmental volatility. Reduced precision in higher-order positive beliefs limits the generation of adaptive past-oriented counterfactual narratives related to meaning, self-fulfilment, and optimism, leading to an increased reliance on external positive feedback for affective regulation. In parallel, reduced granularity in higher-order belief distributions constrains the generation of future-oriented counterfactuals for resolving uncertainty and guiding context-sensitive engagement with the environment. As a result, the system defaults to coarse, undifferentiated affective states, sustained by often elaborate, but weakly nuanced, narratives. We show how these alterations give rise to distinct clinical phenotypes. In depression, uncertainty remains diffusely distributed across temporal horizons, as it is neither attenuated through positively biased autobiographical counterfactuals nor reduced via optimistic prospective counterfactuals. In contrast, mania is characterised by the pathological stabilisation of a future-oriented counterfactual insufficiently grounded in past context, leading to excessively expansive and dysregulated goal-directed behaviour.
+\end{abstract}
+
+
+\section{Generative Model}\label{sec:model}
+
+We formalise counterfactual temporal framing as policy selection within a partially observable Markov decision process (POMDP), following the active inference framework \citep{parr2022active}. The temporal aiming framework \citep{albarracin2026temporal} provides the general computational theory; the present paper applies it to bipolar disorder. The agent maintains beliefs over a factored hidden state space and selects among temporally oriented policies that differentially redistribute precision across state transitions.
+
+\subsection{Factored State Space}
+
+The hidden state $s = (v, e, f)$ is factored into three dimensions. \textbf{Valence} $v \in \{0, \ldots, K{-}1\}$ represents the agent's affective state, discretised at granularity $K$. This is the key parameter corresponding to the \emph{granularity of the higher-order state space}: at $K{=}4$, the agent has a coarse attractor landscape with few intermediate states, whereas at $K{=}8$, intermediate states (e.g., irritation, mild contentment) become representable. \textbf{Interoceptive load} $e \in \{0, \ldots, M{-}1\}$ represents accumulated unprocessed bodily prediction errors ($M{=}8$). Rather than modelling a metabolic resource that depletes, this dimension captures the divergence between predicted and actual bodily states when the agent does not attend to interoception \citep{stephan2016allostatic, seth2016interoceptive}. When the agent does not FEEL (process interoceptive signals), its beliefs about the body-state factor stop updating while the true state evolves, and the mismatch accumulates. When attention returns via FEEL, the load reduces. This reinterpretation preserves the mathematical structure---the direction flips (low load = good, analogous to high energy = good)---but provides a mechanistic explanation: ignoring the body is costly because prediction errors accumulate, not because a resource depletes. This hidden state enables the switching dynamical system structure underlying bipolar oscillation: manic episodes accumulate interoceptive load through aggressive future-oriented framing that ignores bodily signals, while FEEL processing reduces load and prevents permanent dysregulation \citep{pezzulo2015active}. \textbf{Temporal frame} $f \in \{\textsc{past}, \textsc{present}, \textsc{future}\}$ encodes the currently active counterfactual orientation. \textsc{past} corresponds to backward-facing precision modulation (autobiographical counterfactual simulation); \textsc{present} to standard perception--action coupling; \textsc{future} to forward-facing precision modulation (prospective counterfactual simulation toward a ``solution state'').
+
+The total state space has dimensionality $K \times M \times 3$. Under the factored representation, transition and observation matrices decompose into factor-specific components, yielding a compact specification.
+
+\subsection{Observation Model}
+
+The agent receives three observation modalities, each generated by a likelihood mapping $\mathbf{A}_m$. The first modality, \textbf{environmental feedback} $o_{\text{ext}} \in \{\text{negative}, \text{neutral}, \text{positive}\}$, depends on both valence and energy; higher valence and energy increase the probability of positive feedback, modelling the bidirectional relationship between affective state and environmental engagement. The second modality, \textbf{interoceptive signal} $o_{\text{int}} \in \{\text{high load}, \text{neutral}, \text{low load}\}$, depends on the true interoceptive load state, with precision controlled by the parameter $\omega_e$ (interoceptive precision). When $\omega_e$ is high, the agent accurately reads its accumulated bodily prediction error; when low, the interoceptive signal is blurred, and the agent cannot distinguish high load from low load \citep{smith2020bayesian}. The third modality, \textbf{felt valence} $o_{\text{val}} \in \{0, \ldots, K{-}1\}$, is a mapping from the valence state whose precision scales with granularity $K$. At high $K$, the agent can make fine-grained distinctions among affective states; at low $K$, self-observation is blurred, and the negative prior has lasting influence over beliefs.
+
+Critically, the \emph{agent's generative model} of $\mathbf{A}_{\text{int}}$ may differ from the environment's true observation-generating process. This mismatch, whereby the agent's interoceptive model is less precise than reality, is the computational mechanism underlying mania: the environment provides accurate interoceptive load signals, but the agent's blurred $\mathbf{A}_{\text{int}}$ prevents these signals from updating beliefs about accumulated bodily prediction error \citep{smith2020bayesian}.
+
+\subsection{Transition Model: Temporal Framing as Policy}
+
+Each action (temporal framing mode) defines a distinct transition structure $\mathbf{B}_a = \mathbf{B}_v^{(a)} \otimes \mathbf{B}_e^{(a)} \otimes \mathbf{B}_f^{(a)}$, where $\otimes$ denotes the Kronecker product over factored transition matrices.
+
+\paragraph{RECALL (past-oriented framing).}
+The valence transition $\mathbf{B}_v^{\textsc{recall}}$ pulls the affective state toward the prior $\mathbf{D}$, specifically toward positively valenced states. The strength of this pull is controlled by $\pi_{\text{pos}}$ through a sigmoidal gating function $\alpha = \sigma(\pi_{\text{pos}} - \theta)$. When $\pi_{\text{pos}}$ is high, RECALL effectively generates positive counterfactuals grounded in a confident self-model; when $\pi_{\text{pos}}$ is low, the pull is negligible, and past-oriented counterfactuals fail to sustain positive affect. Crucially, this impairment is not merely a matter of belief: in the generative process, recall effectiveness is gated by the same biological parameter, modelling the finding that depressed individuals show impaired access to specific positive autobiographical memories \citep{williams2007autobiographical}. Energy cost is minimal.
+
+\paragraph{ENGAGE (present-oriented framing).}
+Standard perception--action coupling. Valence evolves as a random walk centred on the current state, driven primarily by environmental feedback. Energy is sustainable, as ENGAGE does not deplete the metabolic budget, though a background metabolic cost applies to all active states.
+
+\paragraph{FUTURATE (future-oriented framing).}
+The valence transition pulls toward the most positive state, the ``solution state,'' modelling the generation of a highly precise prospective counterfactual. The effectiveness of this pull in the generative process is modulated by reward sensitivity ($c_{\text{scale}}$): an anhedonic agent cannot generate positive future affect even when imagining optimistic scenarios. Energy cost is high, reflecting the intensive environmental sampling and goal-directed behaviour associated with future-oriented framing. The frame transition is strongly absorbing: once in \textsc{future} mode, the agent tends to remain there.
+
+\paragraph{FEEL (interoceptive processing).}
+Reframed from passive rest, FEEL represents active interoceptive processing that reduces accumulated prediction error on the body-state channel \citep{sandvedsmith2021towards, stephan2016allostatic}. Valence drifts toward neutral as the agent processes interoceptive signals rather than engaging with external demands. The interoceptive load dimension recovers as the agent attends to and processes accumulated bodily prediction errors. The frame opens to any orientation. This captures the insight that interoceptive regulation is not passive conservation but active inference on the body's generative model \citep{seth2016interoceptive, pezzulo2015active}.
+
+\paragraph{BLANK (dissociative null action).}
+BLANK models the psychotic/dissociative state where all directed actions fail: flat affect, present-locked, loss of personal historicity \citep{sterzer2018predictive}. Valence stays nearly constant (90\% stay, 10\% drift toward neutral), interoceptive load slightly increases (the body still metabolises during dissociation), and the temporal frame locks strongly to \textsc{present} (85--90\%), cutting off both past and future. BLANK becomes EFE-optimal only when all directed actions (RECALL, ENGAGE, FUTURATE, FEEL) have higher expected free energy than doing nothing---a regime of \emph{computational learned helplessness} where trying to change state makes things worse. The transition to BLANK requires simultaneous failure of: RECALL (low $\pi_{\text{pos}}^{\text{eff}}$), FUTURATE (high load + no reward), ENGAGE (volatile environment), and FEEL (imprecise interoceptive model, low $\omega_e$). Healthy agents never select BLANK; it emerges specifically in psychosis-vulnerable profiles with impaired interoceptive precision and low allostatic self-efficacy \citep{stephan2016allostatic, smith2020bayesian}.
+
+\paragraph{Learned frame transitions.} The frame transition matrices $\mathbf{B}_f^{(a)}$ are learned online via Dirichlet pseudo-count accumulation, initialised from the values above with concentration $\kappa = 50$. This allows the agent to adapt its temporal framing strategies through experience: an agent that frequently uses RECALL will strengthen its PAST self-transition.
+
+\subsection{Preferences and Prior}
+
+The preference vectors $\mathbf{C}_m$ encode the agent's prior expectations about desirable observations: positive environmental feedback, feeling energised, and positive valence. These preferences are scaled by the reward sensitivity parameter $c_{\text{scale}}$, which modulates the \emph{precision} of hedonic predictions. When $c_{\text{scale}}$ is low, the agent is anhedonic: it does not strongly distinguish between positive and negative outcomes, leading to flattened motivation and near-random policy selection. When $c_{\text{scale}}$ is high, the agent is reward-hypersensitive, aggressively pursuing positive outcomes at the expense of energy conservation.
+
+The prior $\mathbf{D}$ over initial states is shaped by $\pi_{\text{pos}}$: higher $\pi_{\text{pos}}$ concentrates mass on positive valence states, reflecting a confident, positively biased self-model. This prior serves a dual role, both initialising beliefs \emph{and} providing the attractor for RECALL transitions.
+
+\subsection{Clinical Parameters}
+
+Four parameters capture the computational dimensions of vulnerability (Table~\ref{tab:params}). The first three parameters are orthogonal: they affect distinct components of the generative model ($\mathbf{D}$ prior and $\mathbf{B}$ matrices, state space dimensionality, and $\mathbf{A}$ matrix precision, respectively). The fourth parameter ($c_{\text{scale}}$) modulates the $\mathbf{C}$ vectors that drive policy selection via expected free energy, and also gates action effectiveness in the generative process, capturing the biological reality that anhedonia impairs both the motivation to act and the hedonic impact of action outcomes.
+
+\begin{table}[htbp]
+\centering
+\begin{tabular}{llll}
+\toprule
+\textbf{Parameter} & \textbf{Role} & \textbf{Low value} & \textbf{High value} \\
+\midrule
+$\pi_{\text{pos}}$ & Positive-belief precision & Cannot generate positive past counterfactuals & Stable narrative sustains affect \\
+$K$ & Affective granularity & Coarse attractors; catastrophic transitions & Fine-grained; smooth regulation \\
+$\omega_e$ & Interoceptive precision & Cannot detect load accumulation (mania risk) & Accurate interoceptive monitoring \\
+$c_{\text{scale}}$ & Reward sensitivity & Anhedonia; flattened hedonic response & Hypersensitivity; exaggerated pursuit \\
+\bottomrule
+\end{tabular}
+\caption{Clinical parameters and their computational roles.}
+\label{tab:params}
+\end{table}
+
+
+\section{Affective Readout}\label{sec:affect}
+
+We derive valence and dominance from three complementary channels, each grounding a distinct temporal orientation of the affective signal. The composite readout maps onto the pleasure--dominance plane of Mehrabian's PAD model \citep{mehrabian1996pleasure}.
+
+\subsection{Three-Channel Valence}
+
+Valence is decomposed into three channels corresponding to backward, present, and forward temporal orientations, directly mirroring the temporal framing structure of the generative model.
+
+\paragraph{Channel 1: Model valence (backward).}
+Following \citet{joffily2013emotional}, model valence tracks the \emph{rate of change} of variational free energy:
+\begin{equation}
+    v_{\text{model}} = \tanh\!\left(\frac{-\Delta F}{\tau_{\text{model}}}\right)
+\end{equation}
+where $\Delta F = F(t) - F(t{-}1)$. Decreasing free energy (improving model fit) produces positive valence; increasing free energy produces negative valence. This channel is \emph{backward-looking}: it evaluates how well the agent's predictions matched recent observations, and is thus functionally aligned with the RECALL framing mode.
+
+\paragraph{Channel 2: Reward valence (present).}
+Following \citet{pattisapu2024free}, reward valence captures the momentary reward prediction error:
+\begin{equation}
+    v_{\text{reward}} = \tanh\!\left(\frac{U - \mathbb{E}[U]}{\tau_{\text{reward}}}\right)
+\end{equation}
+where $U = \sum_m \log P(o_m \mid C_m)$ is the utility of the observed outcome given preferences, and $\mathbb{E}[U] = \sum_m \sum_{o} Q(o_m) \log P(o_m \mid C_m)$ is the expected utility under predicted observations $Q(o_m) = \mathbf{A}_m \, q_{\text{pred}}$. This channel is \emph{present-oriented}: it evaluates how the current observation compares to expectations, and aligns with the ENGAGE framing mode.
+
+\paragraph{Channel 3: Action valence (forward).}
+Following \citet{hesp2021deeply}, action valence captures the \emph{affective charge}, that is, the degree to which policy revision is aligned with expected free energy:
+\begin{equation}
+    v_{\text{action}} = \tanh\!\left(\frac{\text{AC}}{\tau_{\text{action}}}\right), \qquad \text{AC} = (\boldsymbol{\pi}_{t-1} - \boldsymbol{\pi}_t) \cdot \mathbf{G}
+\end{equation}
+where $\boldsymbol{\pi}$ is the policy distribution and $\mathbf{G}$ the expected free energy vector. Positive affective charge indicates that the agent is shifting probability \emph{away from} high-EFE policies (policy improvement); negative charge indicates deterioration. This channel is \emph{forward-looking}: it evaluates whether the agent's planning is improving, and aligns with the FUTURATE framing mode.
+
+\paragraph{Composite valence.}
+The three channels are combined into a single bounded signal:
+\begin{equation}
+    V = \tanh(v_{\text{model}} + v_{\text{reward}} + v_{\text{action}})
+\end{equation}
+The $\tanh$ bounding ensures $V \in [-1, 1]$ without requiring per-phenotype normalisation, enabling direct comparison across clinical profiles.
+
+\subsection{Arousal and Dominance}
+
+We define two complementary measures of uncertainty, each capturing a distinct source.
+
+\paragraph{State arousal.} The entropy of the posterior belief distribution, $A_{\text{state}} = H[Q(s \mid o)] = -\sum_s Q(s \mid o) \log Q(s \mid o)$, normalised by $\log |\mathcal{S}|$ to yield $A_{\text{state}} \in [0, 1]$. This measures uncertainty about the current hidden state, functionally linked to the amygdala's role as a learning signal for allostatic regulation \citep{barrett2017theory}. In our model, state arousal is uniformly high across phenotypes (due to the large factored state space) and does not differentiate clinical profiles.
+
+\paragraph{Dominance (policy precision).} Following Mehrabian's Pleasure--Arousal--Dominance (PAD) framework \citep{mehrabian1996pleasure}, we define dominance as the \emph{precision} of the policy distribution:
+\begin{equation}
+    D = 1 - \frac{H[Q(\pi)]}{\log |\mathcal{A}|}
+\end{equation}
+where $H[Q(\pi)] = -\sum_a Q(a) \log Q(a)$ is the policy entropy. High dominance ($D \to 1$) corresponds to a sharp, decisive policy in which the agent knows what to do and is in control. Low dominance ($D \to 0$) corresponds to a flat, indecisive policy in which the agent is helpless and unable to distinguish among actions.
+
+Dominance differentiates sharply across phenotypes: the decisive healthy agent ($D \approx 0.80$) contrasts with the indecisive depressive agent ($D \approx 0.07$) and the moderately focused manic agent ($D \approx 0.56$). This maps directly onto the clinical construct: depression is characterised by helplessness and loss of agency; mania by variable but sometimes intense goal-directedness; health by a stable sense of control.
+
+\subsection{Valence--Dominance Affect Space}
+
+To visualise the agent's affective trajectory, we plot composite valence $V$ (horizontal axis) against centred dominance $D_c = 2D - 1 \in [-1, 1]$ (vertical axis). This follows the pleasure--dominance plane of the PAD model \citep{mehrabian1996pleasure}, which separates emotional states by both hedonic tone and sense of control. The four quadrants correspond to distinct affective modes: $(+V, +D)$ maps to \emph{Happy / Content} (positive valence, decisive); $(-V, +D)$ maps to \emph{Angry / Frustrated} (negative valence, decisive); $(+V, -D)$ maps to \emph{Excited / Elated} (positive valence, scattered); and $(-V, -D)$ maps to \emph{Depressed / Fearful} (negative valence, helpless).
+
+We prefer the valence--dominance plane over the traditional valence--arousal circumplex \citep{russell1980circumplex} because state arousal (posterior entropy) does not differentiate phenotypes in our model, whereas policy precision provides a sharp and clinically interpretable axis of variation.
+
+\subsection{Anticipation}
+
+In addition to the three-channel valence, we track the second temporal derivative of free energy:
+\begin{equation}
+    \text{Anticipation} = -\Delta^2 F
+\end{equation}
+Positive anticipation (concave $F$) corresponds to hope, where the agent expects its model fit to continue improving. Negative anticipation (convex $F$) corresponds to fear, where deterioration is accelerating. This signal provides a third-order diagnostic of affective trajectory beyond what the three valence channels capture.
+
+
+\section{Simulation Design}\label{sec:simulation}
+
+\subsection{Clinical Profiles}
+
+We define three parameter configurations corresponding to three clinical phenotypes:
+
+\paragraph{Healthy.} $\pi_{\text{pos}} = 5.0$, $K = 8$, $\omega_e = 5.0$, $c_{\text{scale}} = 1.0$. High-precision positive self-beliefs enable effective RECALL. Fine-grained affective state space permits smooth regulation. Accurate interoception supports adaptive energy management. Normal reward sensitivity drives appropriately motivated policy selection.
+
+\paragraph{Depressive.} $\pi_{\text{pos}} = 0.2$, $K = 4$, $\omega_e = 5.0$, $c_{\text{scale}} = 0.1$. Very low precision on positive beliefs renders RECALL biologically ineffective, as past-oriented counterfactuals fail to access or sustain positive affect. Reduced affective granularity ($K{=}4$) limits the resolution of affective self-monitoring. Interoception remains accurate; the agent \emph{can} detect its state but \emph{cannot} change it through narrative. Critically, reward sensitivity is severely attenuated ($c_{\text{scale}} = 0.1$), modelling anhedonia: the agent does not strongly distinguish between positive and negative outcomes, leading to near-random policy selection and an inability to generate positive affect even through future-oriented imagination.
+
+\paragraph{Manic.} $\pi_{\text{pos}} = 1.5$, $K = 4$, $\omega_e = 0.5$, $c_{\text{scale}} = 2.0$. Low backward-looking positive-belief precision combined with hypersensitive reward processing ($c_{\text{scale}} = 2.0$) drives forward-projected optimism. The manic agent's positivity is not grounded in realistic past self-assessment ($\alpha_{\text{recall}} = \sigma(1.5 - 2) = 0.38$, compared to $0.95$ in the healthy agent) but projected onto unrealistic future scenarios via FUTURATE. This captures the clinical reality that manic optimism is anticipatory rather than autobiographical: mania is characterised by a hypersensitive behavioural approach system oriented toward anticipated rewards \citep{johnson2012behavioral, alloy2010role}. The distinction from depression is critical: both have low backward precision, but the depressive agent's anhedonia ($c_{\text{scale}} = 0.1$) blocks the forward compensatory pathway, while the manic agent's hypersensitivity ($c_{\text{scale}} = 2.0$) drives aggressive forward projection. Low interoceptive precision ($\omega_e = 0.5$) prevents the agent from detecting the resulting energy depletion.
+
+\subsection{Experimental Protocol}
+
+Each profile is run for $T = 300$ timesteps in a stochastic environment with volatility $p = 0.45$ (probability of random valence perturbation per step, with a mild negative bias). The environment modulates action effectiveness through the clinical parameters: recall effectiveness is gated by $\sigma(\pi_{\text{pos}} - \theta)$, and futurate effectiveness is gated by $c_{\text{scale}}$. This captures the biological reality that these parameters affect not only the agent's \emph{beliefs} about what actions will achieve, but also what they \emph{actually} achieve.
+
+The environment includes three additional mechanisms that prevent degenerate dynamics. A \emph{homeostatic energy recovery} drift activates when energy falls below a baseline ($M/3$), preventing permanent depletion. A \emph{bidirectional valence--energy coupling} ensures that low energy probabilistically reduces valence (crash), while persistently low valence drains energy (motivational fatigue / anhedonia). Finally, a \emph{background load accumulation} means all non-FEEL actions carry a small probability of interoceptive load increase, ensuring that sustained activity requires periodic interoceptive processing.
+
+\subsection{Granularity Sweep}
+
+To isolate the effect of affective granularity, we fix $\pi_{\text{pos}} = 3.0$, $\omega_e = 0.8$, and $c_{\text{scale}} = 1.0$ and sweep $K \in \{2, 4, 6, 8\}$ across 5 independent runs per value. We measure: (a) valence variance (oscillation amplitude), (b) jump-size distribution $|\Delta v_t|$, (c) action selection proportions.
+
+\subsection{Parameter Landscape}
+
+We sweep $\pi_{\text{pos}} \in [0.1, 8.0]$ and $\omega_e \in [0.1, 8.0]$ over a $10 \times 10$ grid (fixing $K{=}4$, $M{=}8$, $c_{\text{scale}} = 1.0$, $T{=}200$) and compute mean believed valence, valence variance, mean believed energy, and action entropy.
+
+
+\section{Results}\label{sec:results}
+
+\subsection{Phenotype Differentiation}
+
+The three clinical profiles produce qualitatively distinct trajectories (Figure~\ref{fig:phenotypes}).
+
+The \textbf{healthy} agent maintains moderate-high mean valence ($\bar{v} = 0.63$) and near-maximal energy ($\bar{e} = 0.96$). Policy selection shows a clear structure: RECALL (43\%) and FEEL (57\%) alternate in a stable cycle, with RECALL sustaining positive affect and FEEL processing interoceptive load. The Joffily-Coricelli valence signal oscillates symmetrically around zero, indicating balanced prediction error dynamics (Figure~\ref{fig:joffily}, left).
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\textwidth]{figures/fig1_phenotypes.png}
+    \caption{\textbf{Phenotype comparison.} Each row corresponds to one clinical profile (healthy, depressive, manic). Columns show: valence trajectories (true in gray, believed in colour, EMA-smoothed); energy trajectories; rolling policy probabilities $\pi(a)$ over a 15-step window; variational free energy $F(t)$ (left axis) and Joffily-Coricelli valence $-\dot{F}$ (right axis, dashed). $T = 300$, seed = 42.}
+    \label{fig:phenotypes}
+\end{figure}
+
+The \textbf{depressive} agent exhibits persistently low valence ($\bar{v} = 0.55$) and substantial energy depletion ($\bar{e} = 0.71$). Policy selection is near-uniform across actions, a direct consequence of anhedonia ($c_{\text{scale}} = 0.1$) flattening the preference vectors and rendering all actions similarly valued under expected free energy. Combined with biologically impaired recall effectiveness ($\sigma(\pi_{\text{pos}} - \theta) \approx 0.14$) and attenuated futurate effectiveness ($c_{\text{scale}} = 0.1$), the few recall attempts that occur have only $\approx 14\%$ chance of improving valence. The result is that uncertainty remains diffusely distributed across temporal horizons. The energy depletion reflects a secondary mechanism: persistently low valence triggers motivational fatigue (the bidirectional valence--energy coupling).
+
+The \textbf{manic} agent shows the highest mean valence ($\bar{v} = 0.67$) but the lowest energy ($\bar{e} = 0.33$), exhibiting the characteristic manic dissociation between subjective well-being and objective resource depletion. Low backward-looking positive-belief precision ($\pi_{\text{pos}} = 1.5$, $\alpha_{\text{recall}} = 0.38$) renders RECALL insufficiently grounding, while hypersensitive reward processing ($c_{\text{scale}} = 2.0$) amplifies FUTURATE's valence risk reduction, driving dominant FUTURATE selection (51\%), supplemented by RECALL (37\%), periodic FEEL (8\%), and occasional ENGAGE (4\%). FUTURATE's 90\% absorbing frame transition creates narrative inertia: once the manic agent enters future-oriented framing, it persists (mean FUTURATE run length $\approx 2.2$ timesteps, the longest of any action). Every action feeds back into FUTURATE (RECALL$\to$FUTURATE: 44\%, FEEL$\to$FUTURATE: 54\%), creating a self-reinforcing forward-projection cycle. The energy trace shows severe depletion from sustained FUTURATE activity ($\bar{e} = 0.33$, compared to $0.96$ in healthy), producing the oscillatory pattern characteristic of bipolar cycling. The M5 mood layer amplifies this dynamic: the manic agent's $\pi_{\text{pos}}$ drifts from 1.5 toward $\approx 1.0$ as elevated VFE from FUTURATE-induced prediction errors shifts the mood posterior downward, further weakening RECALL and strengthening FUTURATE dominance---a self-reinforcing manic attractor.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\textwidth]{figures/fig2_joffily.png}
+    \caption{\textbf{Free-energy dynamics} \citep{joffily2013emotional}. Columns correspond to phenotypes. Top: variational free energy $F(t)$. Middle: valence as $-\dot{F}$ (green = positive, red = negative). Bottom: anticipation as $-\ddot{F}$ (orange = hope, purple = fear). Y-axes are shared across columns within each row. The depressive agent shows rising $F(t)$ (worsening model fit); the manic agent's $F(t)$ is flat (overconfident model impervious to prediction errors).}
+    \label{fig:joffily}
+\end{figure}
+
+The phase portrait (Figure~\ref{fig:phase}) further reveals the dynamical character of each phenotype: the healthy agent occupies a tight cluster at high energy, the depressive agent wanders widely across the state space (emotional instability from near-random policy), and the manic agent shows a characteristic trajectory at high valence with severe energy depletion ($\bar{e} = 0.33$), reflecting the dissociation between subjective wellbeing and metabolic depletion driven by sustained FUTURATE activity.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\textwidth]{figures/fig5_phase_portrait.png}
+    \caption{\textbf{Phase portraits: valence $\times$ energy.} EMA-smoothed believed valence vs.\ true energy; colour encodes timestep (purple = early, yellow = late). Green circle = start; red square = end.}
+    \label{fig:phase}
+\end{figure}
+
+\subsection{Granularity and Oscillation Dynamics}
+
+The granularity sweep (Figure~\ref{fig:granularity}) provides direct computational evidence for our central claim: reduced granularity in higher-order belief distributions constrains the generation of future-oriented counterfactuals for resolving uncertainty.
+
+Valence variance decreases with granularity: $0.120$ at $K{=}2$, $0.038$ at $K{=}4$, $0.033$ at $K{=}6$, and $0.036$ at $K{=}8$, representing a roughly three-fold reduction from the coarsest to the finest resolution, with diminishing returns above $K{=}4$. The jump-size distribution is heavy-tailed at $K{=}2$ (catastrophic transitions), whereas for $K \geq 4$ it concentrates near zero.
+
+This result formalises the clinical observation that emotional granularity is a protective factor against mood instability \citep{barrett2017theory}. In our model, the protection is mechanistic: higher $K$ increases the resolution of both the $\mathbf{B}_v$ matrix and the $\mathbf{A}_{\text{val}}$ observation model, enabling smaller steps through the affective landscape rather than all-or-nothing transitions.
+
+\paragraph{FUTURATE effectiveness across granularity (Figure~\ref{fig:granularity}e).}
+To isolate the prediction that reduced granularity constrains the generation of future-oriented counterfactuals, we extract the mean absolute valence change $|\Delta v|$ at timesteps where the agent selects FUTURATE, conditioned on $K$. At $K{=}2$, each FUTURATE attempt produces coarse valence jumps ($|\Delta v| = 0.268 \pm 0.258$), reflecting the all-or-nothing transitions inherent to a binary affective state space. As granularity increases, FUTURATE-conditioned jumps shrink: $0.185 \pm 0.147$ at $K{=}4$, $0.142 \pm 0.125$ at $K{=}6$, and $0.144 \pm 0.127$ at $K{=}8$, converging to a stable regime where fine-grained intermediate states allow smooth regulation rather than catastrophic transitions. Crucially, the FUTURATE selection proportion remains stable across $K$ ($\approx$7--16\%), confirming that the effect is driven by state-space resolution, not differential action selection.
+
+\paragraph{Elaboration versus nuance (Figure~\ref{fig:granularity}f).}
+We predicted that low-granularity agents produce ``elaborate, but weakly nuanced, narratives.'' We operationalise these constructs as follows. \emph{Elaboration} is the action switching rate, defined as the fraction of timesteps at which the agent changes its temporal framing mode, capturing the degree to which the agent actively recruits different temporal strategies. \emph{Nuance} is the number of distinct valence states the agent actually visits, measured by quantising believed valence into $K$ bins (matching the representational granularity) and counting unique occupied bins.
+
+The dissociation is striking: elaboration remains stable across granularity ($0.51$ at $K{=}2$, $0.60$ at $K{=}4$, $0.60$ at $K{=}6$, $0.58$ at $K{=}8$), confirming that the agent actively recruits diverse temporal strategies regardless of state-space resolution. In contrast, nuance scales directly with $K$: the agent visits only $2.0$ of $2$ possible states at $K{=}2$, but $4.0/4$, $5.2/6$, and $7.0/8$ at higher granularities. At low $K$, the agent's full repertoire of strategies (RECALL, FUTURATE, ENGAGE, FEEL) maps onto only two distinguishable affective outcomes, the computational signature of ``elaborate but weakly nuanced'' narratives. At high $K$, the same strategic diversity produces a rich landscape of intermediate affective states, enabling context-sensitive regulation.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\textwidth]{figures/fig3_granularity.png}
+    \caption{\textbf{Effect of affective granularity on oscillation dynamics.} Fixed parameters: $\pi_{\text{pos}} = 3.0$, $\omega_e = 0.8$, $c_{\text{scale}} = 1.0$; $K \in \{2, 4, 6, 8\}$, 5 runs each. (a) Valence trajectories (EMA-smoothed). (b) Valence variance: $K{=}2$ shows substantially higher oscillation than $K \geq 4$. (c) Jump-size distribution: $K{=}2$ has a heavy tail (catastrophic transitions). (d) Action selection proportions: RECALL dominates across all $K$. (e) FUTURATE effectiveness: mean $|\Delta v|$ conditioned on FUTURATE selection, per $K$; dashed line shows FUTURATE selection proportion (right axis). (f) Elaboration (action switching rate, bars) vs nuance (distinct valence states visited, line): at low $K$, elaboration persists while nuance collapses.}
+    \label{fig:granularity}
+\end{figure}
+
+\subsection{Valence--Dominance Trajectories}
+
+Mapping three-channel valence against policy dominance (Figure~\ref{fig:circumplex}) reveals qualitatively distinct emotional signatures that directly reflect each phenotype's computational profile.
+
+The \textbf{healthy} agent's trajectory clusters tightly in the upper-right quadrant (Happy/Content), reflecting moderate positive valence and high dominance. The high dominance is a direct consequence of decisive policy selection: RECALL dominates the healthy agent's policy distribution, producing a peaked $Q(\pi)$ with low entropy. This agent knows what to do and feels good about doing it, the computational signature of contentment.
+
+The \textbf{depressive} agent sits at the bottom of the affect space, with valence centred near zero and dominance at its minimum. The near-zero valence reflects anhedonia ($c_{\text{scale}} = 0.1$): the agent cannot generate strong positive or negative hedonic responses. The collapsed dominance reflects policy indecision, as anhedonia flattens the expected free energy landscape, rendering all actions approximately equivalent and producing a near-uniform policy distribution. This computational signature of low dominance without directional valence maps directly onto the clinical presentation of helpless depression, characterised by psychomotor retardation, loss of agency, and the inability to generate adaptive counterfactuals across any temporal horizon \citep{houben2015relation}.
+
+The \textbf{manic} agent's trajectory occupies the centre of the affect space, with valence near zero and moderate dominance ($D \approx 0.56$). The near-zero composite valence reflects a characteristic tension: FUTURATE dominance generates precise future predictions that the volatile environment systematically violates, producing persistent negative $v_{\text{model}}$ that offsets the positive $v_{\text{reward}}$ from reward hypersensitivity. The moderate dominance reflects focused but shifting policy selection: dominance is high during FUTURATE runs (the longest of any action at $\approx 2.2$ steps) but drops during transitions. The trajectory is more compact than the depressive agent's diffuse wandering but less tightly clustered than the healthy agent's stable upper-right position, reflecting the forward-projected but energetically unsustainable character of manic regulation.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\textwidth]{figures/fig6_circumplex.png}
+    \caption{\textbf{Valence--dominance affect space.} Composite three-channel valence (horizontal axis) against centred policy dominance (vertical axis), following the pleasure--dominance plane of the PAD model \citep{mehrabian1996pleasure}. Colour encodes timestep (purple = early, yellow = late).}
+    \label{fig:circumplex}
+\end{figure}
+
+\subsection{Parameter Landscape}
+
+The parameter sweep (Figure~\ref{fig:landscape}) reveals a clinical landscape with identifiable regions. The zone of \emph{low $\omega_e$ with moderate-high $\pi_{\text{pos}}$} shows lower mean valence, elevated variance, and depleted energy, corresponding to the manic-vulnerable region where poor interoception leads to unsustainable engagement. The zone of \emph{low $\pi_{\text{pos}}$ with high $\omega_e$} shows moderate-low valence with low action entropy, corresponding to the depressive region where the agent can track its state but cannot generate positive counterfactuals. The zone of \emph{high $\pi_{\text{pos}}$ with high $\omega_e$} shows the highest valence, stable energy, and moderate action entropy, corresponding to the healthy region where both narrative resources and self-monitoring are available.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\textwidth]{figures/fig4_parameter_space.png}
+    \caption{\textbf{Clinical parameter landscape.} Heatmaps over $\pi_{\text{pos}} \times \omega_e$ (fixing $K{=}4$, $c_{\text{scale}} = 1.0$, $T{=}200$). Top left: mean believed valence. Top right: valence variance (peaks in the manic-vulnerable zone). Bottom left: mean believed energy (depleted at low $\omega_e$). Bottom right: action entropy. Stars: approximate phenotype locations (H = healthy, D = depressive, M = manic).}
+    \label{fig:landscape}
+\end{figure}
+
+\subsection{Emotion Validation in PAD Space}
+
+To test the model's affective range beyond the three clinical phenotypes, we construct ten parameter configurations targeting distinct regions of the Pleasure--Arousal--Dominance (PAD) space (Figure~\ref{fig:emotion_validation}). A critical design insight is that $c_{\text{scale}}$ and $\gamma$ independently control arousal and dominance, respectively. \textbf{Arousal} is operationalised as the mean expected free energy across policies, $\bar{G} = \frac{1}{|\mathcal{A}|} \sum_a G(a)$, normalised via $\tanh(\bar{G} / \tau_A)$: high $c_{\text{scale}}$ amplifies the preference vectors, producing large EFE magnitudes (high arousal = high anticipated threat), while low $c_{\text{scale}}$ compresses EFE (low arousal = nothing at stake). \textbf{Dominance} is policy precision $1 - H[Q(\pi)] / \log|\mathcal{A}|$: high $\gamma$ sharpens the softmax over EFE, concentrating probability on the best action (high dominance), while low $\gamma$ flattens it (low dominance).
+
+This decoupling allows the model to distinguish states that share one dimension but differ on another. Consider \textbf{angry} ($V = 0.01$, $A = 0.99$, $D = 0.48$) versus \textbf{fearful} ($V = 0.03$, $A = 0.83$, $D = -0.37$): both are near-zero-valence, high-arousal states, but anger is moderately decisive (high $\gamma$, high $c_{\text{scale}}$, where the agent has strong preferences and concentrates on the least-bad option) while fear is indecisive (low $\gamma$, where the agent anticipates bad outcomes but cannot commit to any action). Similarly, \textbf{excited} ($V = 0.17$, $A = 0.81$, $D = -0.52$) and \textbf{happy} ($V = 0.25$, $A = 0.40$, $D = 0.74$) are both positive-valence, but excitement is high-arousal and low-dominance (scattered attention, low $\gamma$) while happiness is moderate-arousal and high-dominance (calm confidence). \textbf{Depressed} ($V = 0.03$, $A = -0.28$, $D = -0.86$) and \textbf{sad} ($V = 0.04$, $A = -0.22$, $D = -0.70$) are both low-arousal, low-dominance, near-zero valence; the model correctly captures these as similar states that differ in degree rather than kind.
+
+The model's primary limitation is a positive valence bias: the homeostatic recovery mechanisms and RECALL prior prevent sustained strongly negative valence, compressing the valence axis to approximately $[-0.2, 0.3]$. This reflects a genuine modelling trade-off, as the mechanisms that enable realistic bipolar cycling also constrain the depth of purely negative affect.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\textwidth]{figures/fig7_emotion_validation.png}
+    \caption{\textbf{3D PAD emotion validation.} Ten parameter configurations targeting distinct regions of the Pleasure--Arousal--Dominance space \citep{mehrabian1996pleasure}. Large markers show time-averaged coordinates; faded trajectories show per-timestep dynamics. The key decoupling: $c_{\text{scale}}$ controls arousal (EFE magnitude) while $\gamma$ independently controls dominance (policy sharpness). See also the 2D projections in the supplementary material.}
+    \label{fig:emotion_validation}
+\end{figure}
+
+\subsection{Temporal Aiming of Affective Channels}
+
+The three-channel valence architecture provides a direct readout of the agent's \emph{temporal orientation}: the relative magnitude of each channel reveals whether affect is predominantly backward-looking (model valence), present-oriented (reward valence), or forward-looking (action valence). We decompose the temporal orientation at each timestep as the normalised absolute channel contribution:
+\begin{equation}
+    \phi_{\text{dir}}(t) = \frac{|v_{\text{dir}}(t)|}{|v_{\text{model}}(t)| + |v_{\text{reward}}(t)| + |v_{\text{action}}(t)| + \epsilon}
+\end{equation}
+and define the \emph{backward--forward conflict rate} as the fraction of timesteps where $v_{\text{model}}$ and $v_{\text{action}}$ have opposite signs, measuring the degree to which the agent's past evaluation and future planning are pulling in different affective directions.
+
+\paragraph{Clinical phenotypes (Figure~\ref{fig:temporal_aiming}).} The three phenotypes show qualitatively distinct temporal orientation profiles. The \textbf{healthy} agent is predominantly present-oriented ($\phi_{\text{present}} = 0.67$), with a moderate forward contribution ($\phi_{\text{fwd}} = 0.20$) and low backward orientation ($\phi_{\text{back}} = 0.13$), consistent with adaptive engagement driven by ongoing environmental feedback and prospective planning. The healthy agent shows the \emph{lowest} backward--forward conflict (26\%), reflecting coherent affective processing in which the temporal channels largely agree---the computational signature of well-regulated affect.
+
+The \textbf{depressive} agent is dominated by the backward channel ($\phi_{\text{back}} = 0.63$), reflecting rumination: the agent's affect is driven primarily by model-fit dynamics while both the present channel (anhedonia compresses $v_{\text{reward}}$, $\phi_{\text{present}} = 0.29$) and the forward channel (policy stagnation suppresses $v_{\text{action}}$, $\phi_{\text{fwd}} = 0.08$) are attenuated. The depressive agent shows elevated backward--forward conflict (49\%), because even though both $v_{\text{model}}$ and $v_{\text{action}}$ are small in absolute terms, they frequently carry opposite signs---the backward channel registers deteriorating model fit while the suppressed forward channel oscillates around zero.
+
+The \textbf{manic} agent shows the strongest present channel ($\phi_{\text{present}} = 0.71$), driven by reward hypersensitivity ($c_{\text{scale}} = 2.0$) amplifying $v_{\text{reward}}$, with low backward orientation ($\phi_{\text{back}} = 0.12$) and moderate forward contribution ($\phi_{\text{fwd}} = 0.18$). The manic agent shows the \emph{highest} backward--forward conflict (55\%), reflecting the characteristic manic pattern of forward projection followed by reality-checking failure: $v_{\text{action}}$ (driven by FUTURATE dominance) and $v_{\text{model}}$ (driven by prediction errors from environmental violations of optimistic forecasts) are persistently in opposition.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\textwidth]{figures/fig8_temporal_aiming.png}
+    \caption{\textbf{Temporal aiming of affective channels.} Three rows per phenotype: (top) smoothed channel traces with backward $v_{\text{model}}$ in blue, present $v_{\text{reward}}$ in green, forward $v_{\text{action}}$ in orange, and composite in dashed black; (middle) normalised temporal orientation; (bottom) mean absolute channel magnitude with backward--forward conflict rate.}
+    \label{fig:temporal_aiming}
+\end{figure}
+
+\paragraph{Temporal orientation across emotions (Figure~\ref{fig:temporal_summary}).} Extending the analysis to all ten emotion profiles reveals a systematic relationship between temporal orientation and emotional character. Backward-dominated emotions (depressed $\phi_{\text{back}} = 0.63$, bored $0.50$, sad $0.44$) cluster at the rumination pole, with backward contributions reflecting the compression of present and forward channels: when $v_{\text{reward}}$ and $v_{\text{action}}$ are suppressed (by low $c_{\text{scale}}$ and policy stagnation, respectively), the backward channel's small absolute magnitude still dominates the normalised orientation. Present-dominated emotions (calm $\phi_{\text{present}} = 0.77$, fearful $0.74$, excited $0.66$, angry $0.65$) show the smallest backward contribution ($\approx 8$--$10\%$) and the largest present fractions, consistent with their reactive, environmentally-engaged character. The depressive profile shows elevated conflict (49\%), because even the suppressed forward channel frequently opposes the backward signal in sign---a computational signature of helplessness in which the channels disagree but the agent lacks the resources to resolve the tension.
+
+This analysis operationalises the temporal aiming framework from the affect literature \citep{joffily2013emotional, hesp2021deeply}: different emotions are not merely points in a valence-arousal space but dynamical modes with characteristic temporal orientations. Depression is defined not just by low valence but by backward-dominated temporal aiming with elevated but unresolvable conflict; anger not just by negative valence but by present-dominated reactive temporal aiming.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\textwidth]{figures/fig9_temporal_summary.png}
+    \caption{\textbf{Temporal orientation across emotion profiles.} Left: stacked horizontal bars showing the mean temporal orientation fraction (backward/present/forward) for each of ten emotion profiles, sorted by backward fraction. Right: backward--forward conflict rate per emotion.}
+    \label{fig:temporal_summary}
+\end{figure}
+
+
+\subsection{Feedback Reliance Under Recall Impairment}
+
+We hypothesised that reduced precision in higher-order positive beliefs leads to an increased reliance on external positive feedback for affective regulation. To test this claim in isolation, we compare two profiles with \emph{identical} reward sensitivity ($c_{\text{scale}} = 1.0$) and granularity ($K = 8$), differing only in positive-belief precision: \textbf{healthy} ($\pi_{\text{pos}} = 5.0$) versus \textbf{recall-impaired} ($\pi_{\text{pos}} = 0.2$). Both agents can feel rewards (normal $c_{\text{scale}}$) and have fine-grained affective states (high $K$); the only difference is whether RECALL is biologically effective.
+
+Figure~\ref{fig:feedback_reliance} reveals the compensatory shift. The healthy agent distributes its policy between RECALL (43\%) and FEEL (57\%), with RECALL serving as the primary affective regulation strategy. The recall-impaired agent shows a substantial reduction in RECALL utilisation (from 43\% to 20\%), with the freed probability mass reallocating predominantly to FEEL (76\%). The recall-impaired agent also shows emergent FUTURATE selection (4\% vs 0\%): when backward-looking counterfactuals fail, the agent partially compensates through forward-looking strategies, consistent with our prediction. However, the dominant compensatory strategy is interoceptive processing (FEEL) rather than active engagement, suggesting that without the anchoring effect of positive autobiographical counterfactuals, the expected free energy landscape favours withdrawal over exploratory action.
+
+The valence trajectories confirm the functional cost: the recall-impaired agent maintains substantially lower mean valence ($\bar{v} = 0.55$ vs $0.63$) despite identical reward sensitivity, demonstrating that RECALL impairment alone, independent of anhedonia, is sufficient to reduce affective wellbeing. This reduction is driven by two reinforcing mechanisms: the loss of RECALL's positive-valence pull, and the increased reliance on FEEL, which drives valence toward neutral rather than positive states.
+
+Policy entropy is elevated in the recall-impaired agent ($0.32$ vs $0.20$), reflecting reduced decisiveness. Without an effective RECALL option, the agent's expected free energy landscape is flatter across the remaining policies, producing less peaked policy selection. The effect is smaller than in the depressive profile (where $c_{\text{scale}} = 0.1$ collapses policy precision entirely), confirming that recall impairment and anhedonia are computationally distinct mechanisms that contribute additively to the depressive phenotype.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\textwidth]{figures/fig10_feedback_reliance.png}
+    \caption{\textbf{Feedback reliance under recall impairment.} Both profiles share $c_{\text{scale}} = 1.0$, $K = 8$, $\omega_e = 5.0$, $\gamma = 16$; they differ only in $\pi_{\text{pos}}$ (5.0 vs 0.2). (a) Action proportions: the recall-impaired agent's RECALL drops from 43\% to 20\%, with compensatory FEEL increase (57\% to 76\%) and emergent FUTURATE (0\% to 4\%). (b) Valence trajectories: recall impairment reduces mean valence ($0.55$ vs $0.63$) despite intact reward sensitivity. (c) Policy entropy: the recall-impaired agent is less decisive.}
+    \label{fig:feedback_reliance}
+\end{figure}
+
+
+\section{Discussion}\label{sec:discussion}
+
+\subsection{Narrative Regulation as Policy Selection}
+
+The model formalises the paper's central claim, that ``strategic narratives are dynamically self-maintaining structures,'' by casting temporal framing as active inference policy selection. RECALL, ENGAGE, FUTURATE, FEEL, and BLANK are not merely cognitive strategies; they are policies with distinct transition dynamics that the agent selects by minimising expected free energy.
+
+The depressive phenotype illustrates narrative failure through multiple reinforcing mechanisms: RECALL cannot sustain positive affect (low $\pi_{\text{pos}}$ impairs both the belief about and the biological effectiveness of positive memory access), FUTURATE cannot generate positive affect (anhedonia blocks the hedonic impact of prospective simulation), and the resulting near-random policy fails to counteract the negative environmental drift. The manic phenotype illustrates forward-projected narrative disconnected from both past grounding and metabolic evidence: low $\pi_{\text{pos}}$ ($= 1.5$) weakens RECALL as a stabilising force ($\alpha_{\text{recall}} = 0.38$), while hypersensitive reward processing ($c_{\text{scale}} = 2.0$) amplifies FUTURATE's attractiveness. The result is dominant FUTURATE selection (51\%), generating intense forward-projected optimism at an energetic cost invisible to the agent's blurred interoceptive model. This captures the clinical observation that manic optimism is anticipatory rather than autobiographical \citep{johnson2012behavioral, alloy2010role}: the manic agent does not build a grounded self-model from past evidence but projects positivity onto unrealistic future scenarios.
+
+\subsection{Anhedonia as Flattened Preference Precision}
+
+The introduction of reward sensitivity ($c_{\text{scale}}$) captures a dimension of depression distinct from both cognitive pessimism ($\pi_{\text{pos}}$) and emotional granularity ($K$). Anhedonia is modelled as reduced precision on the preference vectors $\mathbf{C}$, which flattens the expected free energy landscape and makes all policies appear approximately equivalent. The depressive agent does not actively choose to withdraw; it simply cannot distinguish between action outcomes. This is consistent with reinforcement learning accounts of anhedonia as impaired reward prediction \citep{huys2013mapping} and with the clinical presentation of motivational deficit rather than active avoidance.
+
+Conversely, the manic agent's elevated $c_{\text{scale}}$ corresponds to reward hypersensitivity, the amplified hedonic response to anticipated positive outcomes that drives excessive forward-projected goal pursuit \citep{johnson2012behavioral}. Combined with low backward precision ($\pi_{\text{pos}} = 1.5$), this creates a principled double dissociation with depression: both phenotypes have weakened RECALL, but the manic agent's hypersensitive forward pathway compensates aggressively while the depressive agent's anhedonic forward pathway remains blocked.
+
+\subsection{Granularity as a Transdiagnostic Vulnerability}
+
+The granularity parameter $K$ captures a vulnerability dimension orthogonal to both positive-belief precision and interoceptive accuracy. Low $K$ is not a mood state but a structural property of the generative model that constrains the \emph{resolution} at which affect can be represented. Importantly, $K$ also determines the precision of $\mathbf{A}_{\text{val}}$: lower granularity means blurred self-observation of affect, so that negative priors persist longer.
+
+The elaboration--nuance dissociation (Figure~\ref{fig:granularity}f) provides a precise computational operationalisation of a clinical observation that has resisted formal treatment: patients with low emotional granularity often report rich and varied narratives about their experience, yet these narratives fail to produce correspondingly diverse affective outcomes \citep{barrett2017theory}. In our model, the mechanism is transparent: the agent's \emph{policy space} (four temporal framing modes) is independent of its \emph{state space} ($K$ valence levels). A low-$K$ agent switches strategies just as frequently as a high-$K$ agent (elaboration $\approx 0.51$--$0.60$ across all $K$), but the two distinguishable valence states at $K{=}2$ cannot express the subtle affective differences that eight states at $K{=}8$ can. The narratives are structurally elaborate but affectively impoverished, not because the agent lacks strategic diversity, but because the affective landscape onto which those strategies project is too coarse to register their differential effects.
+
+This has direct implications for intervention. Increasing emotional granularity (through psychoeducation, mindfulness, or affect labelling) changes the \emph{dimensionality of the space} in which affective regulation occurs and the \emph{precision} of affective self-monitoring. Our simulation shows that this alone reduces oscillation amplitude approximately three-fold and increases the number of distinguishable affective states from $2$ to $7$.
+
+\subsection{Recall Impairment and Compensatory Conservation}
+
+The feedback reliance experiment (Figure~\ref{fig:feedback_reliance}) isolates the effect of $\pi_{\text{pos}}$ from anhedonia, revealing that recall impairment alone produces a distinctive compensatory pattern: the agent defaults to interoceptive processing (FEEL) rather than active engagement. This result clarifies the computational pathway from impaired positive-belief precision to behavioural withdrawal. When RECALL cannot sustain positive affect, the expected free energy landscape shifts: the RECALL policy's predicted valence gain is diminished, while its energy cost remains unchanged. FEEL, which reliably reduces interoceptive load and drifts valence toward neutral, becomes the dominant policy by default, not through active avoidance, but through the elimination of a competing attractor.
+
+The emergence of FUTURATE selection in the recall-impaired agent (4\% vs 0\%) suggests a partial compensatory mechanism: when backward-looking counterfactuals fail, the agent can redirect toward forward-looking strategies if reward sensitivity is intact ($c_{\text{scale}} = 1.0$). In the full depressive profile, this compensatory pathway is blocked by anhedonia ($c_{\text{scale}} = 0.1$), which eliminates the hedonic impact of prospective simulation. The depressive phenotype thus represents a double dissociation: recall impairment removes the backward regulatory mechanism, while anhedonia removes the forward compensatory pathway, leaving the agent with no effective means of counterfactual affect regulation.
+
+\subsection{Interoceptive Load and Bipolar Oscillation}
+
+The inclusion of interoceptive load as a latent state enables bipolar cycling to emerge from precision dynamics without hard-coding mood states. The oscillation follows a natural cycle: low backward precision weakens RECALL's stabilising pull, allowing reward hypersensitivity to drive FUTURATE selection, which accumulates interoceptive load (the agent ignores bodily signals while pursuing future projections); blurred interoception prevents the agent from detecting accumulated prediction error; environmental feedback eventually overwhelms the forward-projected model, forcing a transition to FEEL; interoceptive processing reduces load, and the cycle repeats.
+
+This switching dynamical system structure, driven by the interaction between miscalibrated interoceptive precision ($\omega_e$) and amplified reward sensitivity ($c_{\text{scale}}$), resonates with clinical accounts of bipolar disorder as a disorder of energy regulation \citep{berk2007stages} and allostatic self-efficacy \citep{stephan2016allostatic}. The model predicts that interventions targeting interoceptive accuracy (e.g., interoceptive training, body-focused psychotherapy) would reduce oscillation amplitude independently of interventions targeting narrative capacity or emotional granularity.
+
+\subsection{Dynamic Positive-Belief Precision (M5 Mood Layer)}
+
+Following the hierarchical M5 mood layer formalised in \citet{albarracin2026temporal}, $\pi_{\text{pos}}$ is inferred via a hierarchical POMDP. The mood level maintains a categorical belief $q(\mu)$ over $N_\mu = 8$ discretised mood states. Every $T_\mu = 50$ emotion-level steps, the mean variational free energy (VFE) over the window is binned and used to update the mood posterior via Bayesian filtering. The expected $\pi_{\text{pos}} = \mathbb{E}_{q(\mu)}[\mu]$ then parameterises the emotion-level transition matrices. The observation model encodes the causal link: higher mood $\to$ better recall $\to$ lower VFE. The transition model is near-diagonal (self-transition $0.97$), reflecting the empirical persistence of mood.
+
+This means the clinical profiles in Table~\ref{tab:params} represent initial conditions (developmental history), not permanent states. The simulation demonstrates that these initial conditions are self-reinforcing: a healthy agent maintains high $\mathbb{E}[\pi_{\text{pos}}]$ (positive attractor), while a depressive agent's low $\pi_{\text{pos}}$ is sustained by chronically elevated VFE. The manic agent exhibits a distinctive attractor dynamic: FUTURATE dominance produces precise future predictions that the volatile environment violates, generating elevated VFE. This shifts the mood posterior downward ($\pi_{\text{pos}}$: $1.5 \to \approx 1.0$), which further weakens RECALL and strengthens FUTURATE dominance---a self-reinforcing manic attractor. Over sufficiently long runs, continued downward drift of $\pi_{\text{pos}}$ could push the manic agent toward the depressive attractor, providing a mechanistic account of the bipolar depressive phase as an emergent consequence of the manic attractor's instability. Under chronic stress, even a healthy initial mood posterior drifts downward as accumulated VFE evidence favours lower mood states, producing an emergent depressive trajectory (Figures~\ref{fig:pi_pos_dynamics}--\ref{fig:stress_decay}).
+
+\subsection{Three Channels of Valence and Temporal Framing}
+
+The three-channel valence decomposition is not merely a technical convenience; it exposes a structural correspondence between affective signals and the temporal framing modes at the heart of the model. The general temporal aiming framework is formalised in \citet{albarracin2026temporal}; the present section describes how it manifests in each clinical phenotype.
+
+The correspondence between $v_{\text{model}}$ and RECALL reflects their shared backward orientation. Model valence evaluates how well past predictions match current observations; RECALL recruits past counterfactuals to stabilise present affect. When $v_{\text{model}}$ is persistently negative (the depressive agent's rising $F(t)$), it signals that the generative model is losing its grip on the environment, exactly the condition under which RECALL would be adaptive, if the agent could execute it. The correspondence between $v_{\text{reward}}$ and ENGAGE reflects their shared present orientation. Reward valence evaluates the immediate outcome relative to expectations; ENGAGE is standard perception--action coupling. In the depressive agent, anhedonia compresses $v_{\text{reward}}$ toward zero, flattening the distinction between good and bad outcomes and undermining the primary feedback signal for adaptive engagement. The correspondence between $v_{\text{action}}$ and FUTURATE reflects their shared forward orientation. Action valence evaluates whether the agent's planning is improving; FUTURATE generates prospective counterfactuals to motivate goal pursuit. In the manic agent, $v_{\text{action}}$ captures the characteristic pattern of rapid policy shifts driven by reward hypersensitivity, the affective signature of someone who is always ``about to do something great.''
+
+In pathological regimes, the channels dissociate in clinically informative ways. The manic agent shows large $|v_{\text{model}}|$ (FUTURATE generates precise predictions that the environment violates, producing large $\Delta F$), saturating $v_{\text{reward}}$ (reward hypersensitivity amplifies every prediction error), and intermittent $v_{\text{action}}$ (rapid policy switching during RECALL/FUTURATE alternations). The depressive agent shows near-zero $v_{\text{reward}}$ (anhedonia), near-zero $v_{\text{action}}$ (policy stagnation due to indecision), and weakly negative $v_{\text{model}}$ (slowly worsening model fit). These dissociations are directly observable in the simulation and could in principle be mapped to neural or experiential signatures in clinical populations.
+
+The temporal aiming analysis (Figures~\ref{fig:temporal_aiming}--\ref{fig:temporal_summary}) quantifies these dissociations by decomposing affect into its temporal components. The finding that depressive affect is backward-dominated with high temporal conflict formalises the clinical construct of rumination: the agent's affect is driven by past model-fit deterioration, and when forward-looking signals do emerge, they systematically disagree with the backward signal, the computational signature of ``things were bad and will continue to be bad.'' Conversely, the manic agent's present-dominated temporal profile reflects impulsive reactivity: affect is driven by immediate reward prediction errors rather than integration across temporal horizons.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\textwidth]{figures/fig13_pi_pos_dynamics.png}
+    \caption{\textbf{Hierarchical M5 mood layer.} Top row: (a)~$\mathbb{E}[\pi_{\text{pos}}]$ evolution per phenotype; (b)~correlation between $\pi_{\text{pos}}$ and RECALL selection rate; (c)~effective recall $\alpha_{\text{recall}} = \sigma(\pi_{\text{pos}} - 2)$. Bottom row: (d--f)~mood posterior heatmaps showing the belief $q(\mu)$ over discretised $\pi_{\text{pos}}$ states for each phenotype.}
+    \label{fig:pi_pos_dynamics}
+\end{figure}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\textwidth]{figures/fig14_stress_decay.png}
+    \caption{\textbf{Emergent depression under chronic stress (hierarchical M5).} Both agents start with identical healthy parameters ($\pi_{\text{pos}} = 5.0$); the only difference is environmental volatility ($0.3$ vs $0.9$). (a)~$\mathbb{E}[\pi_{\text{pos}}]$ diverges as mood posteriors shift. (b)~Valence trajectories. (c)~RECALL utilisation. (d--e)~Mood posterior heatmaps. (f)~Mood posterior entropy. $T = 3000$.}
+    \label{fig:stress_decay}
+\end{figure}
+
+\subsection{Interoceptive Load Coupling and Fast Precision Modulation}
+
+The model incorporates a fast interoceptive coupling pathway alongside the slow M5 mood layer, following \citet{stephan2016allostatic}'s allostatic self-efficacy framework. A running exponential moving average of interoceptive surprise (the accuracy component of VFE on the $o_{\text{int}}$ modality) provides a real-time estimate of accumulated bodily prediction error---the agent's interoceptive load $\Phi(t)$. When $\Phi$ exceeds a threshold, it directly impairs the effective recall precision:
+\begin{equation}
+    \pi_{\text{pos}}^{\text{eff}} = \frac{\pi_{\text{pos}}}{1 + \tfrac{1}{2}\max(0, \Phi - \Phi_0)}
+\end{equation}
+This creates a dual-timescale system: the \emph{fast} pathway (every step) modulates recall precision based on current interoceptive load, while the \emph{slow} M5 mood pathway (every $T_\mu$ steps) performs Bayesian inference over the base rate $\pi_{\text{pos}}$. The fast pathway captures the clinical observation that acute bodily distress impairs cognitive function immediately \citep{smith2020bayesian}, while the slow pathway captures the gradual erosion of self-efficacy under chronic stress \citep{stephan2016allostatic}.
+
+For healthy agents ($\omega_e = 5.0$), interoceptive load remains low and $\pi_{\text{pos}}^{\text{eff}} \approx \pi_{\text{pos}}$---the coupling is inactive. For manic agents ($\omega_e = 0.5$), the imprecise interoceptive model generates persistent surprise, accumulating load and degrading effective recall precision beyond what the M5 mood layer alone would predict. This provides a mechanistic account of the cognitive impairment observed during manic episodes that goes beyond mood-level inference.
+
+\subsection{Psychotic Decompensation via BLANK}
+
+The BLANK action provides a principled account of dissociative and psychotic states within the active inference framework. Under standard EFE policy selection, BLANK's expected free energy equals the ``cost of the status quo''---it predicts observations close to the current state without attempting to change anything. BLANK therefore wins only when \emph{all} directed actions have higher EFE than doing nothing: RECALL fails (low $\pi_{\text{pos}}^{\text{eff}}$), FUTURATE drains load with no reward, ENGAGE produces volatile outcomes, and FEEL fails to reduce load (low $\omega_e$ renders the interoceptive model too imprecise for effective processing). This regime of simultaneous action failure constitutes computational learned helplessness.
+
+Simulation of a psychosis-vulnerable profile ($\pi_{\text{pos}} = 1.0$, $\omega_e = 0.3$, $c_{\text{scale}} = 1.5$, volatility $= 0.7$) confirms that BLANK emerges in the action profile, producing flat affect (near-zero valence variance), present-locked temporal orientation ($q(f{=}\textsc{present}) \approx 0.85$), and loss of personal historicity ($q(f{=}\textsc{past}) + q(f{=}\textsc{future}) \approx 0.15$). This maps directly onto Manon's clinical characterisation of psychosis as ``fixed outside of personal historicity''---a state providing relative relief from unbearable interoceptive load by shutting off temporal projection, at the cost of adaptive engagement with both past and future.
+
+The clinical reinterpretations under the interoceptive load framework are:
+\begin{itemize}
+    \item \textbf{Depression}: high load + imprecise interoceptive model $\to$ FEEL ineffective $\to$ chronic prediction error accumulation $\to$ mood decay via M5 pathway
+    \item \textbf{Mania}: low $\omega_e$ $\to$ agent cannot read own load $\to$ ignores accumulation during FUTURATE $\to$ crash when prediction errors surface
+    \item \textbf{Psychosis}: simultaneous failure of all directed actions $\to$ BLANK as dissociative refuge $\to$ flat affect + present-locked + loss of historicity
+    \item \textbf{Healthy}: FEEL keeps load regulated $\to$ stable cycling between RECALL and FEEL
+\end{itemize}
+
+\subsection{Limitations and Future Directions}
+
+While the M5 mood layer now implements hierarchical Bayesian inference over $\pi_{\text{pos}}$ (see \citealt{albarracin2026temporal}), the emotion-level policy selection remains single-step. Extending to multi-step planning at the emotion level, with lookahead over temporal frame sequences, would better capture narrative entrenchment and the self-reinforcing quality of ruminative cycles \citep{hesp2021deeply}.
+
+The parameterisation of action effectiveness in the generative process by clinical parameters represents a simplification. Recall effectiveness now emerges partially from agent--environment interaction via the dynamic $\pi_{\text{pos}}$ (M5 mood layer), but futurate effectiveness remains parameterised by $c_{\text{scale}}$. A fully Bayesian account would have both emerge from learned transition dynamics.
+
+Finally, the granularity prediction (higher $K \to$ lower oscillation amplitude) awaits empirical testing via experience sampling in bipolar patients across mood states.
+
+\bibliographystyle{plainnat}
+\bibliography{references}
+
+\end{document}

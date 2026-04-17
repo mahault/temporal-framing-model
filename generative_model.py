@@ -2,20 +2,25 @@
 Generative model for counterfactual temporal framing in bipolar disorder.
 
 Factored hidden states:
-  v: valence (K levels), e: energy (M levels), f: frame (3: PAST/PRESENT/FUTURE)
+  v: valence (K levels), e: interoceptive load (M levels), f: frame (3: PAST/PRESENT/FUTURE)
 
 Observations:
   o_ext (3): environmental feedback
-  o_int (3): interoceptive energy signal
+  o_int (3): interoceptive load signal
   o_val (K): felt valence
 
 Actions:
-  RECALL(0), ENGAGE(1), FUTURATE(2), REST(3)
+  RECALL(0), ENGAGE(1), FUTURATE(2), FEEL(3), BLANK(4)
+
+  FEEL: active interoceptive processing — reduces accumulated prediction error
+        (reframed from REST; Sandved-Smith et al. 2021, Stephan et al. 2016)
+  BLANK: psychotic/dissociative null action — flat affect, present-locked,
+         loss of personal historicity (Sterzer et al. 2018)
 
 Clinical parameters:
   pi_pos:  precision on positive self-beliefs (controls D prior + RECALL pull)
   K:       valence granularity (number of discrete valence states)
-  omega_e: energy estimation precision (controls A_int accuracy)
+  omega_e: interoceptive precision (controls A_int accuracy)
 """
 
 import numpy as np
@@ -23,15 +28,22 @@ from dataclasses import dataclass, field
 from typing import List
 
 # ── Constants ──────────────────────────────────────────────
-RECALL, ENGAGE, FUTURATE, REST = 0, 1, 2, 3
+RECALL, ENGAGE, FUTURATE, FEEL, BLANK = 0, 1, 2, 3, 4
+REST = FEEL   # backward compatibility alias
 PAST, PRESENT, FUTURE = 0, 1, 2
-N_ACTIONS = 4
+N_ACTIONS = 5
 N_FRAMES = 3
 N_EXT = 3   # neg / neutral / pos
 N_INT = 3   # depleted / neutral / energised
-ACTION_NAMES = ['RECALL', 'ENGAGE', 'FUTURATE', 'REST']
+ACTION_NAMES = ['RECALL', 'ENGAGE', 'FUTURATE', 'FEEL', 'BLANK']
 FRAME_NAMES = ['PAST', 'PRESENT', 'FUTURE']
 EPS = 1e-16
+
+# ── M5 mood-level constants (hierarchical POMDP) ──────────
+N_MOOD = 8                                          # discretised pi_pos bins
+MOOD_BIN_CENTERS = np.linspace(0.5, 7.5, N_MOOD)   # [0.5, 1.5, ..., 7.5]
+N_OBS_MOOD = 5                                      # binned mean VFE
+MOOD_OBS_EDGES = np.array([0.0, 3.6, 4.0, 4.3, 4.6, 20.0])
 
 
 # ── Data container ─────────────────────────────────────────
@@ -161,9 +173,9 @@ def _build_A(K, M, F, n_s, omega_e):
 def _build_B(K, M, F, n_s, pi_pos):
     B = []
     for a in range(N_ACTIONS):
-        Bv = _B_valence(K, a, pi_pos)
-        Be = _B_energy(M, a)
-        Bf = _B_frame(a)
+        Bv = B_valence(K, a, pi_pos)
+        Be = B_energy(M, a)
+        Bf = B_frame(a)
         B_full = np.kron(Bv, np.kron(Be, Bf))
         # Normalise columns
         B_full /= (B_full.sum(axis=0, keepdims=True) + EPS)
@@ -171,7 +183,32 @@ def _build_B(K, M, F, n_s, pi_pos):
     return B
 
 
-def _B_valence(K, action, pi_pos):
+# ── Rebuild helpers ──────────────────────────────────────
+def recall_alpha(pi_pos):
+    """Sigmoid gating for RECALL effectiveness."""
+    return 1.0 / (1.0 + np.exp(-(pi_pos - 2.0)))
+
+
+def rebuild_B_single(model, action, pi_pos):
+    """Rebuild one action's full B matrix with current pi_pos."""
+    Bv = B_valence(model.K, action, pi_pos)
+    Be = B_energy(model.M, action)
+    Bf = B_frame(action)
+    B_full = np.kron(Bv, np.kron(Be, Bf))
+    B_full /= (B_full.sum(axis=0, keepdims=True) + EPS)
+    return B_full
+
+
+def rebuild_B_with_frame(model, action, pi_pos, Bf_learned):
+    """Rebuild one action's B matrix with current pi_pos AND learned B_frame."""
+    Bv = B_valence(model.K, action, pi_pos)
+    Be = B_energy(model.M, action)
+    B_full = np.kron(Bv, np.kron(Be, Bf_learned))
+    B_full /= (B_full.sum(axis=0, keepdims=True) + EPS)
+    return B_full
+
+
+def B_valence(K, action, pi_pos):
     """K x K valence transition matrix (cols = from, rows = to)."""
     B = np.zeros((K, K))
     alpha_recall = 1.0 / (1.0 + np.exp(-(pi_pos - 2.0)))  # sigmoid
@@ -191,20 +228,29 @@ def _B_valence(K, action, pi_pos):
             stay = _gaussian_col(K, v, 3.0)
             B[:, v] = 0.5 * solution + 0.5 * stay
 
-        elif action == REST:
+        elif action == FEEL:
             neutral = (K - 1) / 2.0
             toward = _gaussian_col(K, neutral, 2.0)
             stay = _gaussian_col(K, v, 4.0)
             B[:, v] = 0.3 * toward + 0.7 * stay
 
+        elif action == BLANK:
+            # Flat affect: mostly stay, slight drift toward neutral
+            stay = _gaussian_col(K, v, 5.0)
+            neutral = _gaussian_col(K, (K - 1) / 2.0, 1.5)
+            B[:, v] = 0.9 * stay + 0.1 * neutral
+
     B /= (B.sum(axis=0, keepdims=True) + EPS)
     return B
 
 
-def _B_energy(M, action):
-    """M x M energy transition matrix."""
-    # Scaled for M=8: ENGAGE mildly costly, FUTURATE expensive, REST effective
-    deltas = {RECALL: 0.0, ENGAGE: -0.5, FUTURATE: -1.2, REST: 1.2}
+def B_energy(M, action):
+    """M x M interoceptive load transition matrix.
+
+    Reinterpreted as load accumulation: positive delta = load reduction (FEEL),
+    negative delta = load increase (FUTURATE ignores body signals).
+    """
+    deltas = {RECALL: 0.0, ENGAGE: -0.5, FUTURATE: -1.2, FEEL: 1.2, BLANK: -0.3}
     delta = deltas[action]
     B = np.zeros((M, M))
     for e in range(M):
@@ -214,7 +260,7 @@ def _B_energy(M, action):
     return B
 
 
-def _B_frame(action):
+def B_frame(action):
     """3 x 3 temporal-frame transition matrix."""
     matrices = {
         RECALL: np.array([
@@ -232,10 +278,15 @@ def _B_frame(action):
             [0.20, 0.20, 0.08],
             [0.75, 0.75, 0.90],
         ]),
-        REST: np.array([
+        FEEL: np.array([
             [0.30, 0.20, 0.20],
             [0.50, 0.60, 0.50],
             [0.20, 0.20, 0.30],
+        ]),
+        BLANK: np.array([
+            [0.05, 0.05, 0.05],   # → PAST  (historicity cut off)
+            [0.90, 0.90, 0.85],   # → PRESENT (locked in)
+            [0.05, 0.05, 0.10],   # → FUTURE (historicity cut off)
         ]),
     }
     B = matrices[action].copy()
@@ -270,4 +321,64 @@ def _build_D(K, M, F, n_s, pi_pos):
                 p_f = [0.2, 0.6, 0.2][f]
                 D[flat_idx(v, e, f, M)] = p_v * p_e * p_f
     D /= (D.sum() + EPS)
+    return D
+
+
+# ── M5 mood-level generative model (hierarchical POMDP) ──
+
+def _mood_expected_vfe(pi_pos):
+    """Expected mean VFE given mood state pi_pos.
+
+    Higher pi_pos → better recall effectiveness → better model fit → lower VFE.
+    Calibrated from simulation: VFE ≈ 4.14 + 0.66 * (1 - recall_alpha).
+    """
+    alpha = 1.0 / (1.0 + np.exp(-(pi_pos - 2.0)))
+    return 4.14 + 0.66 * (1.0 - alpha)
+
+
+def build_A_mood():
+    """P(o_mood | mood_state): observation model for mood level.
+
+    Maps mood states (discretised pi_pos) to expected binned VFE.
+    Higher mood → expect LOWER VFE (better model fit).
+    Lower mood → expect HIGHER VFE (more prediction errors).
+    """
+    obs_centers = np.array([1.8, 3.8, 4.15, 4.45, 12.3])  # bin centers
+    sigma_A = 0.2  # tight to discriminate VFE range [4.14, 4.68]
+    A = np.zeros((N_OBS_MOOD, N_MOOD))
+    for j in range(N_MOOD):
+        mu = _mood_expected_vfe(MOOD_BIN_CENTERS[j])
+        for i in range(N_OBS_MOOD):
+            A[i, j] = np.exp(-((obs_centers[i] - mu) ** 2) / (2 * sigma_A ** 2))
+        A[:, j] = np.maximum(A[:, j], 0.01)
+        A[:, j] /= A[:, j].sum()
+    return A
+
+
+def build_B_mood():
+    """P(mood' | mood): slow transition dynamics for mood states.
+
+    Very sticky (0.97 self-transition). Symmetric ±1 transitions — all
+    asymmetry in mood drift comes from the VFE evidence, not built-in bias.
+    """
+    B = np.zeros((N_MOOD, N_MOOD))
+    for j in range(N_MOOD):
+        B[j, j] = 0.97
+        if j > 0:
+            B[j - 1, j] = 0.015
+        if j < N_MOOD - 1:
+            B[j + 1, j] = 0.015
+    for j in range(N_MOOD):
+        B[:, j] /= (B[:, j].sum() + EPS)
+    return B
+
+
+def build_D_mood(initial_pi_pos=5.0):
+    """Prior over mood states, concentrated around initial pi_pos."""
+    D = np.zeros(N_MOOD)
+    for i in range(N_MOOD):
+        D[i] = np.exp(-((MOOD_BIN_CENTERS[i] - initial_pi_pos) ** 2)
+                       / (2 * 0.8 ** 2))
+    D = np.maximum(D, EPS)
+    D /= D.sum()
     return D

@@ -20,7 +20,8 @@ Figure 12 – Chronic stress        (stressed vs healthy: frame beliefs,
 import numpy as np
 import matplotlib.pyplot as plt
 from generative_model import (ACTION_NAMES, N_ACTIONS, FUTURATE, RECALL,
-                              ENGAGE, REST, FRAME_NAMES)
+                              ENGAGE, FEEL, BLANK, FRAME_NAMES,
+                              N_MOOD, MOOD_BIN_CENTERS)
 
 # ── Style ──────────────────────────────────────────────────
 plt.rcParams.update({
@@ -29,7 +30,7 @@ plt.rcParams.update({
 })
 
 PCOL = {'healthy': '#2ecc71', 'depressive': '#3498db', 'manic': '#e74c3c'}
-ACOL = ['#8e44ad', '#2ecc71', '#e74c3c', '#95a5a6']   # RECALL ENGAGE FUTURATE REST
+ACOL = ['#8e44ad', '#2ecc71', '#e74c3c', '#95a5a6', '#34495e']   # RECALL ENGAGE FUTURATE FEEL BLANK
 
 
 # ── Smoothing helper ───────────────────────────────────────
@@ -998,7 +999,7 @@ def plot_framing_dynamics(results, save_path=None):
     # ── (e) Post-action valence stability (Gap A) ────────
     ax = axes[1, 1]
     win = 5
-    action_subset = [RECALL, ENGAGE, FUTURATE, REST]
+    action_subset = [RECALL, ENGAGE, FUTURATE, FEEL, BLANK]
     x = np.arange(len(action_subset))
     w = 0.22
     for i, name in enumerate(names):
@@ -1025,28 +1026,27 @@ def plot_framing_dynamics(results, save_path=None):
 
     # ── (f) VFE–FUTURATE correlation (Gap B) ─────────────
     ax = axes[1, 2]
+    # Use within-phenotype VFE percentile bins so all lines span [0,100]
+    n_bins = 8
+    pct_edges = np.linspace(0, 100, n_bins + 1)
+    pct_centers = 0.5 * (pct_edges[:-1] + pct_edges[1:])
     for name in names:
         h = results[name]
         vfe = h['vfe']
         p_fut = h['pi'][:, FUTURATE]
-        # Bin VFE into quantiles and compute mean P(FUTURATE) per bin
-        n_bins = 8
-        vfe_sorted_idx = np.argsort(vfe)
-        bin_size = max(1, len(vfe) // n_bins)
-        bin_centers = []
-        bin_p_fut = []
+        bin_p_fut = np.zeros(n_bins)
+        edges = np.percentile(vfe, pct_edges)
         for b in range(n_bins):
-            start = b * bin_size
-            end = min(start + bin_size, len(vfe))
-            if start >= len(vfe):
-                break
-            idx = vfe_sorted_idx[start:end]
-            bin_centers.append(np.mean(vfe[idx]))
-            bin_p_fut.append(np.mean(p_fut[idx]))
-        ax.plot(bin_centers, bin_p_fut, 'o-', color=PCOL[name], lw=1.5,
+            if b == n_bins - 1:
+                mask = (vfe >= edges[b]) & (vfe <= edges[b + 1])
+            else:
+                mask = (vfe >= edges[b]) & (vfe < edges[b + 1])
+            if np.sum(mask) > 0:
+                bin_p_fut[b] = np.mean(p_fut[mask])
+        ax.plot(pct_centers, bin_p_fut, 'o-', color=PCOL[name], lw=1.5,
                 ms=5, label=name.capitalize())
 
-    ax.set_xlabel('VFE (binned)')
+    ax.set_xlabel('VFE percentile (within phenotype)')
     ax.set_ylabel('$\\pi(\\mathrm{FUTURATE})$')
     ax.set_title('(f) VFE–FUTURATE Correlation')
     ax.legend(fontsize=8)
@@ -1138,6 +1138,343 @@ def plot_chronic_stress(results, save_path=None):
     ax.legend(fontsize=7)
 
     fig.suptitle('Chronic Stress: Maladaptive Future Stabilisation',
+                 fontsize=14, y=1.02)
+    plt.tight_layout()
+    if save_path:
+        fig.savefig(save_path, dpi=300, bbox_inches='tight')
+    return fig
+
+
+# ── Figure 13: pi_pos dynamics (M5 mood layer) ──────────
+def plot_pi_pos_dynamics(results, save_path=None):
+    """
+    Figure 13: Hierarchical mood (M5) dynamics for clinical phenotypes.
+
+    (a) pi_pos traces (E[pi_pos] from mood posterior)
+    (b) Mood posterior heatmaps (per phenotype)
+    (c) alpha_recall = sigmoid(pi_pos - 2) trace
+    """
+    names = ['healthy', 'depressive', 'manic']
+    fig, axes = plt.subplots(2, 3, figsize=(17, 9),
+                             gridspec_kw={'height_ratios': [1, 1.2]})
+    sm_alpha = 0.08
+
+    # ── Row 1a: pi_pos traces ──
+    ax = axes[0, 0]
+    for name in names:
+        h = results[name]
+        T = len(h['pi_pos'])
+        t = np.arange(T)
+        ax.plot(t, _ema(h['pi_pos'], sm_alpha), color=PCOL[name], lw=1.5,
+                label=name.capitalize())
+    ax.axhline(2.0, color='gray', lw=0.8, ls=':', label='$\\theta$')
+    ax.set_xlabel('Timestep')
+    ax.set_ylabel('$\\mathbb{E}[\\pi_{\\mathrm{pos}}]$')
+    ax.set_ylim(0, 8.5)
+    ax.set_title('(a) Expected $\\pi_{\\mathrm{pos}}$ from Mood Posterior')
+    ax.legend(fontsize=8)
+
+    # ── Row 1b: pi_pos vs RECALL rate ──
+    ax = axes[0, 1]
+    win = 20
+    for name in names:
+        h = results[name]
+        pi_pos_sm = _ema(h['pi_pos'], 0.15)
+        recall_rate = np.convolve(
+            (h['action'] == RECALL).astype(float),
+            np.ones(win) / win, mode='same')
+        ax.scatter(pi_pos_sm, recall_rate, s=8, alpha=0.3, color=PCOL[name],
+                   label=name.capitalize())
+    ax.set_xlabel('$\\mathbb{E}[\\pi_{\\mathrm{pos}}]$ (smoothed)')
+    ax.set_ylabel('RECALL selection rate (rolling)')
+    ax.set_title('(b) $\\pi_{\\mathrm{pos}}$ vs RECALL Rate')
+    ax.legend(fontsize=8)
+
+    # ── Row 1c: alpha_recall ──
+    ax = axes[0, 2]
+    for name in names:
+        h = results[name]
+        T = len(h['pi_pos'])
+        t = np.arange(T)
+        alpha_r = 1.0 / (1.0 + np.exp(-(h['pi_pos'] - 2.0)))
+        ax.plot(t, _ema(alpha_r, sm_alpha), color=PCOL[name], lw=1.5,
+                label=name.capitalize())
+    ax.axhline(0.5, color='gray', lw=0.8, ls=':')
+    ax.set_xlabel('Timestep')
+    ax.set_ylabel('$\\alpha_{\\mathrm{recall}}$')
+    ax.set_ylim(-0.05, 1.05)
+    ax.set_title('(c) RECALL Effectiveness $\\sigma(\\pi_{\\mathrm{pos}} - 2)$')
+    ax.legend(fontsize=8)
+
+    # ── Row 2: mood posterior heatmaps ──
+    for col_idx, name in enumerate(names):
+        ax = axes[1, col_idx]
+        h = results[name]
+        mb = h['mood_beliefs']  # (T, N_MOOD)
+        T = mb.shape[0]
+        im = ax.imshow(mb.T, aspect='auto', origin='lower',
+                       extent=[0, T, MOOD_BIN_CENTERS[0] - 0.5,
+                               MOOD_BIN_CENTERS[-1] + 0.5],
+                       cmap='viridis', vmin=0, vmax=1)
+        ax.set_xlabel('Timestep')
+        if col_idx == 0:
+            ax.set_ylabel('$\\pi_{\\mathrm{pos}}$ bin')
+        ax.set_title(f'({"def"[col_idx]}) Mood Posterior: {name.capitalize()}')
+        plt.colorbar(im, ax=ax, shrink=0.8, label='$q(\\mu)$')
+
+    fig.suptitle('Hierarchical M5 Mood Layer: Bayesian Inference over $\\pi_{\\mathrm{pos}}$',
+                 fontsize=14, y=1.02)
+    plt.tight_layout()
+    if save_path:
+        fig.savefig(save_path, dpi=300, bbox_inches='tight')
+    return fig
+
+
+# ── Figure 14: Stress decay (emergent depression) ───────
+def plot_stress_decay(results, save_path=None):
+    """
+    Figure 14: Emergent depression under chronic stress via hierarchical M5.
+
+    Row 1: (a) E[pi_pos], (b) valence, (c) RECALL proportion
+    Row 2: (d)-(e) mood posterior heatmaps for each condition
+    """
+    names = ['healthy_stable', 'healthy_under_stress']
+    _SDCOL = {'healthy_stable': '#2ecc71', 'healthy_under_stress': '#e74c3c'}
+    fig, axes = plt.subplots(2, 3, figsize=(17, 9),
+                             gridspec_kw={'height_ratios': [1, 1.2]})
+    sm_alpha = 0.04  # lighter smoothing for longer T
+
+    # ── Row 1a: pi_pos divergence ──
+    ax = axes[0, 0]
+    for name in names:
+        h = results[name]
+        T = len(h['pi_pos'])
+        t = np.arange(T)
+        label = name.replace('_', ' ').title()
+        ax.plot(t, _ema(h['pi_pos'], sm_alpha), color=_SDCOL[name], lw=1.5,
+                label=label)
+    ax.axhline(2.0, color='gray', lw=0.8, ls=':', label='$\\theta$')
+    ax.set_xlabel('Timestep')
+    ax.set_ylabel('$\\mathbb{E}[\\pi_{\\mathrm{pos}}]$')
+    ax.set_ylim(0, 8.5)
+    ax.set_title('(a) $\\pi_{\\mathrm{pos}}$ Under Chronic Stress')
+    ax.legend(fontsize=8)
+
+    # ── Row 1b: Valence trajectories ──
+    ax = axes[0, 1]
+    for name in names:
+        h = results[name]
+        T = len(h['valence_belief'])
+        t = np.arange(T)
+        label = name.replace('_', ' ').title()
+        ax.plot(t, _ema(h['valence_belief'], sm_alpha), color=_SDCOL[name],
+                lw=1.5, label=label)
+    ax.set_xlabel('Timestep')
+    ax.set_ylabel('Believed Valence')
+    ax.set_ylim(-0.05, 1.05)
+    ax.set_title('(b) Valence Trajectories')
+    ax.legend(fontsize=8)
+
+    # ── Row 1c: RECALL proportion ──
+    ax = axes[0, 2]
+    win = 50
+    for name in names:
+        h = results[name]
+        T = len(h['action'])
+        t = np.arange(T)
+        recall_rate = np.convolve(
+            (h['action'] == RECALL).astype(float),
+            np.ones(win) / win, mode='same')
+        label = name.replace('_', ' ').title()
+        ax.plot(t, recall_rate, color=_SDCOL[name], lw=1.5, label=label)
+    ax.set_xlabel('Timestep')
+    ax.set_ylabel('RECALL proportion (rolling)')
+    ax.set_ylim(-0.05, 1.05)
+    ax.set_title('(c) RECALL Utilisation')
+    ax.legend(fontsize=8)
+
+    # ── Row 2: mood posterior heatmaps ──
+    for col_idx, name in enumerate(names):
+        ax = axes[1, col_idx]
+        h = results[name]
+        mb = h['mood_beliefs']  # (T, N_MOOD)
+        T = mb.shape[0]
+        im = ax.imshow(mb.T, aspect='auto', origin='lower',
+                       extent=[0, T, MOOD_BIN_CENTERS[0] - 0.5,
+                               MOOD_BIN_CENTERS[-1] + 0.5],
+                       cmap='viridis', vmin=0, vmax=1)
+        ax.set_xlabel('Timestep')
+        if col_idx == 0:
+            ax.set_ylabel('$\\pi_{\\mathrm{pos}}$ bin')
+        label = name.replace('_', ' ').title()
+        ax.set_title(f'({"de"[col_idx]}) Mood Posterior: {label}')
+        plt.colorbar(im, ax=ax, shrink=0.8, label='$q(\\mu)$')
+
+    # Third panel in row 2: difference in mood entropy
+    ax = axes[1, 2]
+    for name in names:
+        h = results[name]
+        mb = h['mood_beliefs']
+        T = mb.shape[0]
+        t = np.arange(T)
+        mood_H = -np.sum(mb * np.log(mb + 1e-16), axis=1)
+        label = name.replace('_', ' ').title()
+        ax.plot(t, _ema(mood_H, sm_alpha), color=_SDCOL[name], lw=1.5,
+                label=label)
+    ax.set_xlabel('Timestep')
+    ax.set_ylabel('$H[q(\\mu)]$')
+    ax.set_title('(f) Mood Posterior Entropy')
+    ax.legend(fontsize=8)
+
+    fig.suptitle('Emergent Depression Under Chronic Stress '
+                 '(Hierarchical M5 Mood Layer)',
+                 fontsize=14, y=1.02)
+    plt.tight_layout()
+    if save_path:
+        fig.savefig(save_path, dpi=300, bbox_inches='tight')
+    return fig
+
+
+# ── Figure 15: Psychotic decompensation (Experiment 8) ────
+_PSCOL = {'healthy': '#2ecc71', 'vulnerable': '#9b59b6'}
+
+
+def plot_psychosis(results, save_path=None):
+    """
+    Figure 15: Psychotic Decompensation via BLANK Action (2x3).
+
+    Row 1: (a) Action proportions comparison, (b) BLANK + interoceptive load
+           over time, (c) Frame beliefs
+    Row 2: (d) Valence trajectory, (e) pi_pos_eff vs pi_pos,
+           (f) Temporal orientation (stacked area)
+    """
+    names = ['healthy', 'vulnerable']
+    fig, axes = plt.subplots(2, 3, figsize=(17, 10))
+    sm_alpha = 0.08
+
+    # ── (a) Action proportions — grouped bars ──────────────
+    ax = axes[0, 0]
+    x = np.arange(N_ACTIONS)
+    w = 0.3
+    for i, name in enumerate(names):
+        h = results[name]
+        props = [np.mean(h['action'] == a) for a in range(N_ACTIONS)]
+        bars = ax.bar(x + i * w, props, w, label=name.capitalize(),
+                      color=_PSCOL[name], alpha=0.85)
+        for bar, p in zip(bars, props):
+            if p > 0.01:
+                ax.text(bar.get_x() + bar.get_width() / 2,
+                        bar.get_height() + 0.01,
+                        f'{p:.2f}', ha='center', va='bottom', fontsize=7)
+    ax.set_xticks(x + w / 2)
+    ax.set_xticklabels(ACTION_NAMES, fontsize=8)
+    ax.set_ylabel('Proportion')
+    ax.set_title('(a) Action Selection')
+    ax.legend(fontsize=9)
+    ax.set_ylim(0, ax.get_ylim()[1] * 1.15)
+
+    # ── (b) BLANK rate + interoceptive load over time ──────
+    ax = axes[0, 1]
+    win = 20
+    for name in names:
+        h = results[name]
+        T = len(h['action'])
+        t = np.arange(T)
+        blank_rate = np.convolve(
+            (h['action'] == BLANK).astype(float),
+            np.ones(win) / win, mode='same')
+        ax.plot(t, blank_rate, color=_PSCOL[name], lw=1.5,
+                label=f'{name.capitalize()} BLANK rate')
+    ax.set_ylabel('BLANK selection rate (rolling)')
+    ax.set_xlabel('Timestep')
+    ax.set_title('(b) BLANK Rate Over Time')
+    ax.set_ylim(-0.05, 1.05)
+    ax.legend(fontsize=7)
+
+    ax2 = ax.twinx()
+    for name in names:
+        h = results[name]
+        T = len(h['intero_load'])
+        t = np.arange(T)
+        ax2.plot(t, _ema(h['intero_load'], sm_alpha), color=_PSCOL[name],
+                 lw=1.0, ls='--', alpha=0.6)
+    ax2.set_ylabel('Interoceptive load (EMA)', fontsize=8)
+
+    # ── (c) Frame beliefs — FUTURE vs PRESENT ─────────────
+    ax = axes[0, 2]
+    for name in names:
+        h = results[name]
+        fb = h['frame_belief']
+        T = len(fb)
+        t = np.arange(T)
+        pres_sm = _ema(fb[:, 1], sm_alpha)  # PRESENT
+        ax.plot(t, pres_sm, color=_PSCOL[name], lw=1.5,
+                label=f'{name.capitalize()} PRESENT')
+        fut_sm = _ema(fb[:, 2], sm_alpha)  # FUTURE
+        ax.plot(t, fut_sm, color=_PSCOL[name], lw=1.0, ls='--', alpha=0.6,
+                label=f'{name.capitalize()} FUTURE')
+    ax.set_xlabel('Timestep')
+    ax.set_ylabel('Frame belief')
+    ax.set_ylim(0, 1)
+    ax.set_title('(c) Temporal Frame Beliefs')
+    ax.legend(fontsize=7)
+
+    # ── (d) Valence trajectory ─────────────────────────────
+    ax = axes[1, 0]
+    for name in names:
+        h = results[name]
+        T = len(h['valence'])
+        t = np.arange(T)
+        ax.plot(t, _ema(h['valence'], sm_alpha), color=_PSCOL[name], lw=1.5,
+                label=name.capitalize())
+    ax.axhline(0, color='gray', lw=0.5, ls=':')
+    ax.set_xlabel('Timestep')
+    ax.set_ylabel('Composite Valence')
+    ax.set_ylim(-1.1, 1.1)
+    ax.set_title('(d) Valence Trajectories')
+    ax.legend(fontsize=9)
+
+    # ── (e) pi_pos_eff vs pi_pos ───────────────────────────
+    ax = axes[1, 1]
+    for name in names:
+        h = results[name]
+        T = len(h['pi_pos'])
+        t = np.arange(T)
+        ax.plot(t, _ema(h['pi_pos'], sm_alpha), color=_PSCOL[name], lw=1.5,
+                label=f'{name.capitalize()} $\\pi_{{pos}}$')
+        ax.plot(t, _ema(h['pi_pos_eff'], sm_alpha), color=_PSCOL[name],
+                lw=1.0, ls='--', alpha=0.6,
+                label=f'{name.capitalize()} $\\pi_{{pos}}^{{eff}}$')
+    ax.set_xlabel('Timestep')
+    ax.set_ylabel('Recall precision')
+    ax.set_title('(e) Effective vs Base $\\pi_{\\mathrm{pos}}$')
+    ax.legend(fontsize=7)
+
+    # ── (f) Channel decomposition (vulnerable) ────────────
+    ax = axes[1, 2]
+    h = results['vulnerable']
+    T = len(h['v_model'])
+    t = np.arange(T)
+    vm = _ema(h['v_model'], sm_alpha)
+    vr = _ema(h['v_reward'], sm_alpha)
+    va = _ema(h['v_action'], sm_alpha)
+    vc = _ema(h['valence'], sm_alpha)
+
+    ax.plot(t, vm, color=_TCOL['backward'], lw=1.2,
+            label='Backward ($v_{\\mathrm{model}}$)')
+    ax.plot(t, vr, color=_TCOL['present'], lw=1.2,
+            label='Present ($v_{\\mathrm{reward}}$)')
+    ax.plot(t, va, color=_TCOL['forward'], lw=1.2,
+            label='Forward ($v_{\\mathrm{action}}$)')
+    ax.plot(t, vc, color='k', lw=1.5, ls='--', alpha=0.6, label='Composite')
+    ax.axhline(0, color='gray', lw=0.5, ls=':')
+    ax.set_xlabel('Timestep')
+    ax.set_ylabel('Channel value')
+    ax.set_ylim(-1.1, 1.1)
+    ax.set_title('(f) Vulnerable Agent: Valence Channels')
+    ax.legend(fontsize=7)
+
+    fig.suptitle('Psychotic Decompensation: BLANK as Dissociative Refuge',
                  fontsize=14, y=1.02)
     plt.tight_layout()
     if save_path:

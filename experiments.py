@@ -10,7 +10,7 @@ Experiments
 """
 
 import numpy as np
-from generative_model import build_model, N_ACTIONS
+from generative_model import build_model, N_ACTIONS, N_MOOD
 from agent import Agent
 from environment import Environment
 
@@ -26,15 +26,16 @@ PROFILES = {
         desc='Low positive-belief precision, low granularity, anhedonic',
     ),
     'manic': dict(
-        K=4, M=8, pi_pos=5.0, omega_e=0.5, gamma=16.0, c_scale=2.0,
-        desc='Overconfident, poor energy estimation, hypersensitive reward',
+        K=4, M=8, pi_pos=1.5, omega_e=0.5, gamma=16.0, c_scale=2.0,
+        desc='Forward-projected optimism, poor interoception, hypersensitive reward',
     ),
 }
 
 
 # ── Single trial ───────────────────────────────────────────
 def run_trial(K=8, M=5, pi_pos=5.0, omega_e=5.0, gamma=16.0, c_scale=1.0,
-              T=300, volatility=0.45, seed=42, **_ignored):
+              T=300, volatility=0.45, seed=42, T_mood=50,
+              learn_B_frame=False, frame_concentration=50.0, **_ignored):
     """
     Run one agent–environment trial.
 
@@ -42,7 +43,10 @@ def run_trial(K=8, M=5, pi_pos=5.0, omega_e=5.0, gamma=16.0, c_scale=1.0,
     """
     model = build_model(K=K, M=M, pi_pos=pi_pos, omega_e=omega_e,
                         gamma=gamma, c_scale=c_scale)
-    agent = Agent(model, gamma=gamma)
+    agent = Agent(model, gamma=gamma, pi_pos=pi_pos, T_mood=T_mood,
+                  learn_B_frame=learn_B_frame,
+                  frame_concentration=frame_concentration,
+                  seed=seed + 1)
     env = Environment(K=K, M=M, volatility=volatility, seed=seed,
                       pi_pos=pi_pos, c_scale=c_scale)
 
@@ -52,6 +56,9 @@ def run_trial(K=8, M=5, pi_pos=5.0, omega_e=5.0, gamma=16.0, c_scale=1.0,
     for t in range(T):
         action, info = agent.step(obs)
         obs, env_info = env.step(action)
+
+        # Update environment recall effectiveness from dynamic pi_pos
+        env.update_pi_pos(info['pi_pos'])
 
         # Marginal beliefs
         joint = info['beliefs'].reshape(K, M, 3)
@@ -82,6 +89,12 @@ def run_trial(K=8, M=5, pi_pos=5.0, omega_e=5.0, gamma=16.0, c_scale=1.0,
         # Frame beliefs: marginalise joint over valence and energy
         f_marg = joint.sum(axis=(0, 1))   # Shape: (3,) — [P(PAST), P(PRESENT), P(FUTURE)]
         hist['frame_belief'][t] = f_marg
+        # M5 mood layer (hierarchical POMDP)
+        hist['pi_pos'][t] = info['pi_pos']
+        hist['mood_beliefs'][t] = info['mood_beliefs']
+        # Interoceptive load coupling
+        hist['intero_load'][t] = info.get('intero_load', 0.0)
+        hist['pi_pos_eff'][t]  = info.get('pi_pos_eff', info['pi_pos'])
 
     # Second derivative → anticipation
     hist['d2F'] = np.diff(hist['dF'], prepend=hist['dF'][0])
@@ -116,6 +129,11 @@ def _make_history(T, K):
         arousal_norm   = np.zeros(T),
         policy_entropy_norm = np.zeros(T),
         frame_belief   = np.zeros((T, 3)),
+        pi_pos         = np.zeros(T),
+        mood_beliefs   = np.zeros((T, N_MOOD)),
+        # Interoceptive load coupling (Stephan et al. 2016)
+        intero_load    = np.zeros(T),
+        pi_pos_eff     = np.zeros(T),
     )
 
 
@@ -317,4 +335,84 @@ def run_chronic_stress_experiment(T=300, seed=42):
         mv = np.mean(results[name]['valence_belief'])
         mfb = np.mean(results[name]['frame_belief'], axis=0)
         print(f"mean_v={mv:.3f}  frame_belief=[{mfb[0]:.2f}, {mfb[1]:.2f}, {mfb[2]:.2f}]")
+    return results
+
+
+# ── Experiment 7: Stress decay (hierarchical M5 mood) ─────
+STRESS_DECAY_PROFILES = {
+    'healthy_stable': dict(
+        K=8, M=8, pi_pos=5.0, omega_e=5.0, gamma=16.0, c_scale=1.0,
+        volatility=0.3,
+        desc='Baseline: stable environment, healthy parameters',
+    ),
+    'healthy_under_stress': dict(
+        K=8, M=8, pi_pos=5.0, omega_e=5.0, gamma=16.0, c_scale=1.0,
+        volatility=0.9,
+        desc='Chronic stress: same agent, high-volatility environment',
+    ),
+}
+
+
+def run_stress_decay_experiment(T=3000, seed=42):
+    """
+    Emergent depression under chronic stress via hierarchical M5 mood layer.
+
+    Both agents start with identical healthy parameters (pi_pos=5.0).
+    The only difference is environmental volatility (0.3 vs 0.9).
+    Over T=3000 steps, the stressed agent accumulates negative v_model
+    evidence at the mood level, shifting the mood posterior toward lower
+    pi_pos states. This weakens RECALL and produces an emergent depressive
+    trajectory — a stable attractor in the hierarchical mood dynamics.
+    """
+    results = {}
+    for name, prof in STRESS_DECAY_PROFILES.items():
+        print(f"    {name} …", end=" ", flush=True)
+        results[name] = run_trial(**prof, T=T, seed=seed)
+        mv = np.mean(results[name]['valence_belief'])
+        mp = np.mean(results[name]['pi_pos'])
+        print(f"mean_v={mv:.3f}  mean_pi_pos={mp:.3f}")
+    return results
+
+
+# ── Experiment 8: Psychotic decompensation ────────────────
+PSYCHOSIS_PROFILES = {
+    'healthy': dict(
+        K=8, M=8, pi_pos=5.0, omega_e=5.0, gamma=16.0, c_scale=1.0,
+        volatility=0.3,
+        desc='Baseline: healthy parameters, low volatility',
+    ),
+    'vulnerable': dict(
+        K=4, M=8, pi_pos=1.0, omega_e=0.3, gamma=16.0, c_scale=1.5,
+        volatility=0.7,
+        desc='Psychosis-vulnerable: very low interoceptive precision, '
+             'moderate reward sensitivity, low recall precision, '
+             'high volatility — BLANK emerges when all directed actions fail',
+    ),
+}
+
+
+def run_psychosis_experiment(T=300, seed=42):
+    """
+    Experiment 8: Psychotic decompensation via BLANK action.
+
+    The vulnerable profile has:
+      - omega_e=0.3: very low interoceptive precision — agent can't read load
+      - pi_pos=1.0: low recall precision — RECALL fails
+      - c_scale=1.5: moderate reward sensitivity
+      - volatility=0.7: high environmental stress
+
+    Expected: After interoceptive load accumulates and pi_pos_eff degrades,
+    all directed actions (RECALL, ENGAGE, FUTURATE, FEEL) become EFE-costly.
+    BLANK emerges as the least-bad option: flat affect, present-locked,
+    loss of personal historicity (Sterzer et al. 2018).
+    """
+    results = {}
+    for name, prof in PSYCHOSIS_PROFILES.items():
+        print(f"    {name} …", end=" ", flush=True)
+        results[name] = run_trial(**prof, T=T, seed=seed)
+        mv = np.mean(results[name]['valence_belief'])
+        from generative_model import BLANK
+        blank_frac = np.mean(results[name]['action'] == BLANK)
+        ml = np.mean(results[name]['intero_load'])
+        print(f"mean_v={mv:.3f}  BLANK={blank_frac:.3f}  intero_load={ml:.2f}")
     return results

@@ -34,7 +34,7 @@ These contributions establish that affect has temporal structure. Yet no existin
 
 This paper fills both gaps. We formally propose the VFE/EFE temporal mapping as a unified theory of affective temporal direction (\S\ref{sec:temporal_structure}), derive a three-channel valence architecture that decomposes affect into its temporal components (\S\ref{sec:three_channel}), and formalise counterfactual temporal framing as precision redistribution across temporal horizons (\S\ref{sec:counterfactual}). Temporal framing is not a separate cognitive function bolted onto inference; it \emph{emerges} from EFE minimisation given the right generative model structure. We demonstrate this with simulations of past-oriented framing (\S\ref{sec:past}), future-oriented framing (\S\ref{sec:future}), and the pathological case of chronic stress as maladaptive temporal fixation (\S\ref{sec:chronic_stress}).
 
-The generative model is shared with a companion paper on bipolar disorder \citep{albarracin2026bipolar}, which focuses on clinical phenotypes arising from parameter variation along energy, interoception, and granularity dimensions. The present paper abstracts away from those clinical particulars to address the general computational mechanism of temporal affect regulation.
+The generative model is sufficiently general to accommodate clinical applications, such as bipolar disorder modelling, though here we focus on the temporal mechanism itself.
 
 
 \section{The Temporal Structure of Free Energy}\label{sec:temporal_structure}
@@ -158,7 +158,7 @@ In predictive processing, attention is precision weighting on prediction errors 
 
 \subsection{The Generative Model: Temporal Frame as Hidden State}\label{sec:gen_model}
 
-We adopt the factored POMDP structure described in detail in our companion paper \citep{albarracin2026bipolar}. The hidden state $s = (v, e, f)$ is factored into three dimensions: \textbf{valence} $v \in \{0, \ldots, K{-}1\}$ (affective state at granularity $K$), \textbf{energy} $e \in \{0, \ldots, M{-}1\}$ (interoceptive resource estimate), and \textbf{temporal frame} $f \in \{\textsc{past}, \textsc{present}, \textsc{future}\}$ (currently active counterfactual orientation).
+We adopt a factored POMDP structure. The hidden state $s = (v, e, f)$ is factored into three dimensions: \textbf{valence} $v \in \{0, \ldots, K{-}1\}$ (affective state at granularity $K$), \textbf{interoceptive load} $e \in \{0, \ldots, M{-}1\}$ (accumulated bodily prediction error), and \textbf{temporal frame} $f \in \{\textsc{past}, \textsc{present}, \textsc{future}\}$ (currently active counterfactual orientation).
 
 Critically, $f$ is a genuinely hidden state that the agent \emph{infers}, not a label it assigns. Temporal orientation is something the agent believes about \emph{itself}, updated through the same Bayesian machinery as all other hidden states. The posterior frame belief $q(f \mid o)$, obtained by marginalising $q(v, e, f \mid o)$ over valence and energy, provides a direct readout of the agent's believed temporal orientation.
 
@@ -172,7 +172,11 @@ Each action defines a distinct transition structure $\mathbf{B}_a = \mathbf{B}_v
 
 \paragraph{FUTURATE.} The frame matrix $\mathbf{B}_f^{\textsc{futurate}}$ assigns 90\% self-transition to \textsc{future}, allocating precision to anticipated future states. The high absorptivity reflects ``narrative inertia'': once engaged in prospective simulation, the agent tends to persist. Simultaneously, $\mathbf{B}_v^{\textsc{futurate}}$ pulls valence toward the solution state $K{-}1$, imagining the best outcome.
 
-\paragraph{REST.} The frame matrix $\mathbf{B}_f^{\textsc{rest}}$ assigns 50--60\% to \textsc{present}, releasing frame commitment and allowing the temporal orientation to reset.
+\paragraph{FEEL.} The frame matrix $\mathbf{B}_f^{\textsc{feel}}$ assigns 50--60\% to \textsc{present}, releasing frame commitment and allowing the temporal orientation to reset. Reframed from passive rest, FEEL represents active interoceptive processing that reduces accumulated bodily prediction error \citep{sandvedsmith2021towards, stephan2016allostatic}.
+
+\paragraph{BLANK.} The frame matrix $\mathbf{B}_f^{\textsc{blank}}$ assigns 85--90\% to \textsc{present}, cutting off both past and future. BLANK models a dissociative null action---flat affect, present-locked, loss of personal historicity---that becomes EFE-optimal only when all directed actions fail \citep{sterzer2018predictive}.
+
+\paragraph{Learned frame transitions.} The $\mathbf{B}_{\text{frame}}$ matrices are initialised with the values described above but are updated online via Dirichlet learning. Each action's frame transition matrix is parameterised by Dirichlet pseudo-counts $\boldsymbol{\alpha}^{(a)}$, initialised at $\mathbf{B}_f^{(a)} \cdot \kappa$ where $\kappa = 50$ sets the initial concentration. After each transition, the counts update using the soft frame posteriors: $\boldsymbol{\alpha}^{(a)}_{f', f} \mathrel{+}= q(f' \mid o_t) \cdot q(f \mid o_{t-1})$. The expected transition matrix $\bar{\mathbf{B}}_f^{(a)} = \boldsymbol{\alpha}^{(a)} / \sum_{f'} \boldsymbol{\alpha}^{(a)}_{f'}$ then replaces the fixed matrix. This allows the agent to learn personalised temporal attention operators: an agent that frequently and successfully uses RECALL will strengthen its PAST self-transition, while an agent that rarely uses FUTURATE will allow its FUTURE transition to decay toward the prior.
 
 \subsection{Counterfactual Simulation as Decoupled Inference}\label{sec:decoupled}
 
@@ -191,7 +195,7 @@ Each action has different risk and ambiguity because of its different $\mathbf{B
     G(a) = \sum_m \left[\text{risk}_m(a) + \text{ambiguity}_m(a)\right]
 \end{equation}
 
-When VFE is high and beliefs are far from preferred, FUTURATE wins because $\mathbf{B}_v^{\textsc{futurate}}$ pulls most strongly toward the preferred (solution) state, yielding the largest risk reduction in the valence modality. When the agent's model fits well and positive self-beliefs enable effective recall, RECALL wins by maintaining affect via the prior pull with minimal energy cost. When energy is depleted, REST wins because $\mathbf{B}_e^{\textsc{rest}}$ restores energy, yielding the lowest energy-modality risk. The standard softmax policy selection $\pi(a) \propto \exp(-\gamma \cdot G(a))$ then naturally routes the agent toward the appropriate temporal frame. No temporal routing heuristic is needed; the structure is already in the generative model.
+When VFE is high and beliefs are far from preferred, FUTURATE wins because $\mathbf{B}_v^{\textsc{futurate}}$ pulls most strongly toward the preferred (solution) state, yielding the largest risk reduction in the valence modality. When the agent's model fits well and positive self-beliefs enable effective recall, RECALL wins by maintaining affect via the prior pull with minimal energy cost. When interoceptive load is high, FEEL wins because $\mathbf{B}_e^{\textsc{feel}}$ reduces load, yielding the lowest interoceptive-modality risk. The standard softmax policy selection $\pi(a) \propto \exp(-\gamma \cdot G(a))$ then naturally routes the agent toward the appropriate temporal frame. No temporal routing heuristic is needed; the structure is already in the generative model.
 
 \subsection{Temporal Framing and the Emotion--Action--Inference Loop}\label{sec:loop}
 
@@ -211,7 +215,7 @@ This creates two dynamical regimes. In \emph{self-regulation}, the loop is homeo
 
 The RECALL policy redistributes precision toward past-generated internal states via two coupled mechanisms. First, $\mathbf{B}_f^{\textsc{recall}}$ shifts frame beliefs toward \textsc{past} (70\% self-transition). Second, $\mathbf{B}_v^{\textsc{recall}}$ pulls the valence state toward the prior $\mathbf{D}$ with strength $\alpha = \sigma(\pi_{\text{pos}} - \theta)$.
 
-The sigmoid gating function produces an all-or-nothing effect at the threshold $\pi_{\text{pos}} \approx 2.0$. When $\pi_{\text{pos}}$ is high ($\alpha \to 1$), RECALL effectively generates positive counterfactuals grounded in a confident self-model. When $\pi_{\text{pos}}$ is low ($\alpha \approx 0.12$), RECALL is biologically ineffective: the agent cannot access specific positive autobiographical memories, consistent with the ``overgeneral autobiographical memory'' observed in depression \citep{williams2007autobiographical}.
+The sigmoid gating function produces an all-or-nothing effect at the threshold $\pi_{\text{pos}} \approx 2.0$. When $\pi_{\text{pos}}$ is high ($\alpha \to 1$), RECALL effectively generates positive counterfactuals grounded in a confident self-model. When $\pi_{\text{pos}}$ is low ($\alpha \approx 0.14$), RECALL is biologically ineffective: the agent cannot access specific positive autobiographical memories, consistent with the ``overgeneral autobiographical memory'' observed in depression \citep{williams2007autobiographical}.
 
 The energy cost of RECALL is minimal. Running the generative model offline on past states is computationally cheap relative to active environmental engagement. This gives RECALL a natural advantage in the EFE decomposition: low valence risk (via the prior pull) combined with low energy risk.
 
@@ -219,20 +223,20 @@ The energy cost of RECALL is minimal. Running the generative model offline on pa
 
 A critical claim of this paper is that past-oriented framing is \emph{preparatory}: narrative consolidation enables action rather than substituting for it. The RECALL$\to$ENGAGE pipeline operates as follows: RECALL stabilises beliefs by pulling toward the prior, which lowers VFE. Lower VFE means the ENGAGE policy becomes more competitive (its risk terms decrease when beliefs are closer to preferred states). The agent naturally transitions from RECALL to ENGAGE as its beliefs stabilise.
 
-Simulation evidence supports this claim (Figure~\ref{fig:framing_dynamics}d, e). Action transition matrices show a substantial RECALL$\to$ENGAGE path in healthy agents. Post-action valence stability analysis reveals that RECALL produces lower 5-step valence variance than REST or FUTURATE, confirming that RECALL \emph{stabilises} affect rather than merely boosting it. This stabilisation is the computational basis for the claim: by anchoring beliefs in positive prior expectations (via the $\mathbf{B}_v^{\textsc{recall}}$ pull toward $\mathbf{D}$), RECALL reduces the volatility of subsequent prediction errors, creating a more stable platform for engagement.
+Simulation evidence supports this claim (Figure~\ref{fig:framing_dynamics}d, e). Action transition matrices show a substantial RECALL$\to$ENGAGE path in healthy agents. Post-action valence stability analysis reveals that RECALL produces lower 5-step valence variance than FEEL or FUTURATE, confirming that RECALL \emph{stabilises} affect rather than merely boosting it. This stabilisation is the computational basis for the claim: by anchoring beliefs in positive prior expectations (via the $\mathbf{B}_v^{\textsc{recall}}$ pull toward $\mathbf{D}$), RECALL reduces the volatility of subsequent prediction errors, creating a more stable platform for engagement.
 
 \subsection{When Past Framing Fails: Feedback Reliance}\label{sec:feedback_reliance}
 
-When $\pi_{\text{pos}}$ is low, $\alpha \approx 0.12$ and RECALL becomes biologically ineffective. The EFE landscape shifts: RECALL's predicted valence gain is diminished while its (minimal) energy cost remains unchanged. REST, which reliably restores energy and drifts valence toward neutral, becomes the dominant policy by default.
+When $\pi_{\text{pos}}$ is low, $\alpha \approx 0.14$ and RECALL becomes biologically ineffective. The EFE landscape shifts: RECALL's predicted valence gain is diminished while its (minimal) energy cost remains unchanged. FEEL, which reliably reduces interoceptive load and drifts valence toward neutral, becomes the dominant policy by default.
 
-Figure~\ref{fig:feedback_reliance} demonstrates this pattern by comparing two profiles with identical reward sensitivity ($c_{\text{scale}} = 1.0$), granularity ($K = 8$), and interoceptive precision ($\omega_e = 5.0$), differing only in positive-belief precision: healthy ($\pi_{\text{pos}} = 5.0$) versus recall-impaired ($\pi_{\text{pos}} = 0.2$). The recall-impaired agent shows a dramatic collapse of RECALL utilisation (from 41\% to 7\%), with compensatory REST increase (59\% to 87\%) and emergent FUTURATE selection (6\% vs 0\%).
+Figure~\ref{fig:feedback_reliance} demonstrates this pattern by comparing two profiles with identical reward sensitivity ($c_{\text{scale}} = 1.0$), granularity ($K = 8$), and interoceptive precision ($\omega_e = 5.0$), differing only in positive-belief precision: healthy ($\pi_{\text{pos}} = 5.0$) versus recall-impaired ($\pi_{\text{pos}} = 0.2$). The recall-impaired agent shows a substantial reduction in RECALL utilisation (from 43\% to 20\%), with compensatory FEEL increase (57\% to 76\%) and emergent FUTURATE selection (4\% vs 0\%).
 
 The emergent FUTURATE selection demonstrates a partial compensatory mechanism: when backward-looking counterfactuals fail, the agent can redirect toward forward-looking strategies if reward sensitivity is intact. In the full depressive profile (where $c_{\text{scale}} = 0.1$), this compensatory pathway is also blocked by anhedonia, producing a double dissociation: recall impairment removes the backward regulatory mechanism, while anhedonia removes the forward compensatory pathway.
 
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=\textwidth]{figures/fig10_feedback_reliance.png}
-    \caption{\textbf{Feedback reliance under recall impairment.} Both profiles share $c_{\text{scale}} = 1.0$, $K = 8$, $\omega_e = 5.0$, $\gamma = 16$; they differ only in $\pi_{\text{pos}}$ (5.0 vs 0.2). (a) Action proportions: the recall-impaired agent's RECALL drops from 41\% to 7\%, with compensatory REST increase (59\% to 87\%) and emergent FUTURATE (0\% to 6\%). (b) Valence trajectories: recall impairment reduces mean valence ($0.52$ vs $0.63$) despite intact reward sensitivity. (c) Policy entropy: the recall-impaired agent is modestly less decisive.}
+    \caption{\textbf{Feedback reliance under recall impairment.} Both profiles share $c_{\text{scale}} = 1.0$, $K = 8$, $\omega_e = 5.0$, $\gamma = 16$; they differ only in $\pi_{\text{pos}}$ (5.0 vs 0.2). (a) Action proportions: the recall-impaired agent's RECALL drops from 43\% to 20\%, with compensatory FEEL increase (57\% to 76\%) and emergent FUTURATE (0\% to 4\%). (b) Valence trajectories: recall impairment reduces mean valence ($0.55$ vs $0.63$) despite intact reward sensitivity. (c) Policy entropy: the recall-impaired agent is less decisive.}
     \label{fig:feedback_reliance}
 \end{figure}
 
@@ -253,13 +257,13 @@ Simulation evidence confirms this (Figure~\ref{fig:framing_dynamics}b, f). Mean 
 
 \subsection{Shorter Behavioural Horizons}\label{sec:short_horizon}
 
-FUTURATE's energy cost creates a natural brake via EFE. After one to two steps of FUTURATE, the predicted interoceptive observation enters the ``depleted'' range, which increases the energy-modality risk term. The softmax shifts away from FUTURATE, producing short, reactive planning bursts rather than sustained commitment.
+FUTURATE's interoceptive load cost creates a natural brake via EFE. After one to two steps of FUTURATE, the predicted interoceptive observation enters the ``high load'' range, which increases the interoceptive-modality risk term. The softmax shifts away from FUTURATE, producing short, reactive planning bursts rather than sustained commitment.
 
-Simulation evidence (Figure~\ref{fig:framing_dynamics}c) confirms that FUTURATE runs are consistently shorter than RECALL runs: mean FUTURATE run length $\approx 1.3$ timesteps versus RECALL $\approx 1.7$ timesteps. The contrast is mechanistically transparent: RECALL has zero energy cost and therefore no brake, while FUTURATE's energy cost provides an inherent self-limiting mechanism. FUTURATE is therefore a reactive, bursty planning mode, not a sustained strategic commitment.
+Simulation evidence (Figure~\ref{fig:framing_dynamics}c) confirms this brake. The healthy agent never selects FUTURATE at all: the load cost renders it EFE-dominated by RECALL and FEEL, which alternate in a stable cycle with run lengths of $\approx 1.5$ and $\approx 1.9$ timesteps, respectively. In the manic agent, reward hypersensitivity ($c_{\text{scale}} = 2.0$) overrides the energy brake, producing FUTURATE run lengths of $\approx 2.2$ timesteps---the longest of any action---exceeding RECALL ($\approx 1.7$). The contrast is mechanistically transparent: RECALL has zero load cost and therefore no brake, while FUTURATE's load cost provides an inherent self-limiting mechanism that is overcome only by pathological reward amplification. In the healthy agent, FUTURATE is entirely suppressed; in the manic agent, it becomes the dominant but self-reinforcing planning mode.
 
 \subsection{Frame Beliefs and Temporal Orientation}\label{sec:frame_beliefs}
 
-The posterior frame belief $q(f \mid o)$, obtained by marginalising the full posterior over valence and energy, provides a direct readout of the agent's believed temporal orientation. Healthy agents show balanced frame allocation ($\approx 0.30$ future, $\approx 0.45$ present, $\approx 0.25$ past), reflecting adaptive use of all temporal modes (Figure~\ref{fig:framing_dynamics}a). The three clinical phenotypes from the companion paper show qualitatively distinct profiles: manic agents have elevated future-frame belief ($\approx 0.4$--$0.5$), depressive agents have suppressed future-frame belief, and healthy agents maintain moderate balance.
+The posterior frame belief $q(f \mid o)$, obtained by marginalising the full posterior over valence and energy, provides a direct readout of the agent's believed temporal orientation. Healthy agents show frame allocation dominated by present and past ($\approx 0.47$ present, $\approx 0.34$ past, $\approx 0.20$ future), reflecting the adaptive RECALL--FEEL cycle (Figure~\ref{fig:framing_dynamics}a). The three clinical phenotypes show qualitatively distinct profiles: depressive agents show elevated future-frame belief ($\approx 0.33$) reflecting undirected prospective simulation, manic agents show dominant future-frame belief ($\approx 0.53$) from FUTURATE dominance (the forward-projected optimism characteristic of mania), and healthy agents maintain the most present-centred balance.
 
 \begin{figure}[htbp]
     \centering
@@ -287,9 +291,9 @@ Once FUTURATE enters the policy mix, its 90\% absorbing frame transition creates
 
 \subsection{Temporal Dysregulation Pattern}\label{sec:temporal_dysreg}
 
-The stressed agent's posterior frame belief shows a characteristic pattern: elevated \textsc{past} (from compensatory RECALL) and elevated \textsc{future} (from FUTURATE), with depleted \textsc{present} (Figure~\ref{fig:chronic_stress}a). The agent oscillates between rumination (RECALL) and overmentalising (FUTURATE), never settling in present engagement.
+The stressed agent's posterior frame belief shows a characteristic pattern: elevated \textsc{past} (from compensatory RECALL; $0.42$ vs $0.34$ in healthy) with depleted \textsc{present} ($0.38$ vs $0.46$), while \textsc{future} remains comparable (Figure~\ref{fig:chronic_stress}a). The stressed agent shifts toward backward-looking framing at the expense of present engagement, consistent with the rumination that characterises chronic stress.
 
-This pattern of elevated temporal extremes with depleted present is the computational signature of temporal dysregulation. It maps onto the clinical presentation of chronic stress and anxiety disorders, where patients report excessive past-oriented rumination and future-oriented worry at the expense of present-moment awareness \citep{berg2022rumination}.
+This pattern of elevated past-framing with depleted present engagement is the computational signature of temporal dysregulation. It maps onto the clinical presentation of chronic stress and anxiety disorders, where patients report excessive past-oriented rumination at the expense of present-moment awareness \citep{berg2022rumination}.
 
 \subsection{Persistent Backward Negative Valence}\label{sec:backward_negative}
 
@@ -306,7 +310,7 @@ This pattern of persistent backward negativity, oscillating present, and ephemer
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=\textwidth]{figures/fig12_chronic_stress.png}
-    \caption{\textbf{Chronic stress as maladaptive temporal fixation.} Stressed profile ($c_{\text{scale}} = 2.0$, $\omega_e = 0.5$, volatility $= 0.7$) vs healthy ($c_{\text{scale}} = 1.0$, $\omega_e = 5.0$, volatility $= 0.3$); $K{=}8$, $\pi_{\text{pos}} = 3.0$, $\gamma = 16$ shared. (a)~Frame beliefs: the stressed agent shows elevated FUTURE and PAST frame beliefs with depleted PRESENT (temporal dysregulation). (b)~Backward valence $v_{\text{model}}$: more variable and persistently negative in the stressed agent (chronic model-fit deterioration from high volatility). (c)~Valence channel decomposition for the stressed agent: backward channel persistently negative, reward channel oscillating, action channel showing intermittent positive bursts.}
+    \caption{\textbf{Chronic stress as maladaptive temporal fixation.} Stressed profile ($c_{\text{scale}} = 2.0$, $\omega_e = 0.5$, volatility $= 0.7$) vs healthy ($c_{\text{scale}} = 1.0$, $\omega_e = 5.0$, volatility $= 0.3$); $K{=}8$, $\pi_{\text{pos}} = 3.0$, $\gamma = 16$ shared. (a)~Frame beliefs: the stressed agent shows elevated PAST frame belief ($0.42$ vs $0.34$) with depleted PRESENT ($0.38$ vs $0.46$). (b)~Backward valence $v_{\text{model}}$: more variable and persistently negative in the stressed agent (chronic model-fit deterioration from high volatility). (c)~Valence channel decomposition for the stressed agent: backward channel persistently negative, reward channel oscillating, action channel showing intermittent positive bursts.}
     \label{fig:chronic_stress}
 \end{figure}
 
@@ -321,7 +325,7 @@ Counterfactual temporal framing is the \emph{mechanism} by which agents actively
 
 \subsection{Temporal Framing as a General Mechanism}\label{sec:general_mechanism}
 
-Temporal framing is not specific to pathology. Healthy agents \emph{use} temporal framing for adaptive regulation: RECALL stabilises affect (creating a floor under valence), FUTURATE provides reactive planning (responding to high prediction error), and the natural energy cost of FUTURATE provides a self-limiting brake. Pathology arises not from temporal framing itself but from the failure of its balancing mechanisms, whether the brake is disabled (impaired interoception), the accelerator is enhanced (reward hypersensitivity), or the stabiliser fails (impaired positive-belief precision).
+Temporal framing is not specific to pathology. Healthy agents \emph{use} temporal framing for adaptive regulation: RECALL stabilises affect (creating a floor under valence), FUTURATE provides reactive planning (responding to high prediction error), FEEL processes interoceptive load (preventing accumulation of bodily prediction error), and the natural load cost of FUTURATE provides a self-limiting brake. Pathology arises not from temporal framing itself but from the failure of its balancing mechanisms, whether the brake is disabled (impaired interoception), the accelerator is enhanced (reward hypersensitivity), or the stabiliser fails (impaired positive-belief precision). In extreme cases, the simultaneous failure of all directed actions leads to BLANK---a dissociative state providing relative relief by shutting off temporal projection entirely.
 
 \subsection{Connection to Attention-as-Precision}\label{sec:attention_connection}
 
@@ -331,11 +335,41 @@ Temporal framing is not specific to pathology. Healthy agents \emph{use} tempora
 
 \citet{hesp2021deeply} distinguished two timescales in the affect hierarchy: M4 (emotion), operating within-trial as fast precision dynamics, and M5 (mood), operating cross-trial as slow valence state inference. Temporal framing operates at the \emph{interface} between these timescales. Individual frame selections are M4 phenomena, reflecting fast, within-trial decisions about temporal orientation driven by current EFE. Sustained frame biases are M5 phenomena, reflecting slow, cross-trial tendencies toward particular temporal orientations that encode learned or dispositional patterns.
 
-The transition from adaptive temporal framing (M4) to chronic temporal fixation (M5) is precisely the self-amplification pathology described in \S\ref{sec:chronic_stress}. A future extension would make this hierarchy explicit, with frame selection at the lower level and frame \emph{policy} at the higher level, capturing the dynamics of narrative entrenchment and therapeutic flexibility \citep{hein2022emotion}.
+We implement the M5 layer as a \emph{hierarchical POMDP} over the positive-belief precision parameter $\pi_{\text{pos}}$. The mood level maintains a categorical belief $q(\mu)$ over $N_\mu = 8$ discretised mood states $\mu \in \{0.5, 1.5, \ldots, 7.5\}$, each corresponding to a value of $\pi_{\text{pos}}$. Every $T_\mu = 50$ emotion-level steps, the mood level performs one cycle of Bayesian inference:
+
+\textbf{Observation.} The mood-level observation is the mean variational free energy (VFE) over the preceding window: $\bar{F} = T_\mu^{-1} \sum_{t' \in \text{window}} F(t')$. This is binned into $N_o^\mu = 5$ categories. The observation model $\mathbf{A}^\mu$ encodes the expectation that higher mood states (higher $\pi_{\text{pos}}$, hence better RECALL effectiveness) produce lower VFE:
+\begin{equation}
+    P(o^\mu \mid \mu) \propto \exp\!\left( -\frac{(\bar{o}^\mu - \hat{F}(\mu))^2}{2\sigma_A^2} \right), \qquad \hat{F}(\mu) = 4.14 + 0.66\,(1 - \sigma(\mu - 2))
+\end{equation}
+where $\hat{F}(\mu)$ is the expected VFE given mood state $\mu$ and $\sigma_A = 0.2$.
+
+\textbf{Transition.} The mood-level transition model $\mathbf{B}^\mu$ is near-diagonal (self-transition probability $0.97$, symmetric $\pm 1$ transitions at $0.015$), encoding the empirical observation that mood is highly persistent. All asymmetry in mood drift arises from the VFE evidence, not from built-in bias.
+
+\textbf{Update.} Standard Bayesian filtering:
+\begin{align}
+    q_{\text{pred}}(\mu) &= \mathbf{B}^\mu\, q(\mu) \\
+    q(\mu \mid o^\mu) &\propto P(o^\mu \mid \mu)\, q_{\text{pred}}(\mu)
+\end{align}
+
+\textbf{Readout.} The expected $\pi_{\text{pos}}$ under the mood posterior parameterises the emotion-level $\mathbf{B}$ matrices:
+\begin{equation}
+    \pi_{\text{pos}} = \mathbb{E}_{q(\mu)}[\mu] = \sum_i \mu_i\, q(\mu_i)
+\end{equation}
+
+This hierarchical architecture creates self-reinforcing attractor dynamics entirely from Bayesian inference. A healthy agent in a benign environment experiences low VFE, which is consistent with high mood states, maintaining $\pi_{\text{pos}}$ and RECALL effectiveness. Conversely, chronic prediction error (high VFE) shifts the mood posterior toward lower states, weakening RECALL, which further elevates VFE---producing the depressive attractor. Clinical phenotypes thus emerge as stable attractors of the hierarchical mood dynamics rather than being imposed as fixed parameter settings.
+
+The transition from adaptive temporal framing (M4) to chronic temporal fixation (M5) is precisely the self-amplification pathology described in \S\ref{sec:chronic_stress}. We demonstrate this with a stress decay experiment (Figure~\ref{fig:stress_decay_p2}): two agents with identical healthy initial conditions ($\pi_{\text{pos}} = 5.0$) are placed in environments differing only in volatility ($0.3$ vs $0.9$). Over $T = 3000$ steps, the hierarchical mood posterior diverges: the healthy agent's $\mathbb{E}[\pi_{\text{pos}}]$ drifts upward toward $\approx 5.5$ (positive attractor, final $\approx 6.0$), while the stressed agent's posterior shifts downward toward $\approx 4.3$ (final $\approx 4.4$), trending toward the sigmoid knee at $\pi_{\text{pos}} = 2$ where RECALL effectiveness would begin to collapse. This divergence arises purely from accumulated VFE evidence at the mood level, without any change to the agent's initial parameter configuration.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\textwidth]{figures/fig14_stress_decay.png}
+    \caption{\textbf{Emergent depression under chronic stress (hierarchical M5 mood layer).} Both agents start with identical healthy parameters ($\pi_{\text{pos}} = 5.0$); the only difference is environmental volatility ($0.3$ vs $0.9$). (a)~$\mathbb{E}[\pi_{\text{pos}}]$ trajectories diverge as the mood posterior shifts. (b)~Valence diverges. (c)~RECALL utilisation. (d--e)~Mood posterior heatmaps show the healthy agent concentrating at high $\mu$ while the stressed agent diffuses toward lower states. (f)~Mood posterior entropy. $T = 3000$.}
+    \label{fig:stress_decay_p2}
+\end{figure}
 
 \subsection{Relationship to Bipolar Disorder}\label{sec:bipolar_connection}
 
-Our companion paper \citep{albarracin2026bipolar} models bipolar disorder as pathology of energy $\times$ interoception, with clinical phenotypes emerging from parameter variation along four dimensions ($\pi_{\text{pos}}$, $K$, $\omega_e$, $c_{\text{scale}}$). The present paper provides the \emph{general temporal mechanism} that bipolar disrupts. Bipolar disorder involves pathological \emph{cycling} of temporal frames: manic episodes are locked FUTURATE (aggressive future-oriented framing that depletes energy), crashes are forced REST (energy recovery), and depressive episodes involve failed temporal flexibility (inability to select any adaptive frame). Chronic stress, by contrast, involves pathological \emph{fixation} without cycling: the agent oscillates between RECALL and FUTURATE without the energy crash that forces reset.
+The same framework can model bipolar disorder as pathology of energy $\times$ interoception $\times$ backward precision, where clinical phenotypes emerge from parameter variation along four dimensions ($\pi_{\text{pos}}$, $K$, $\omega_e$, $c_{\text{scale}}$). The present paper provides the \emph{general temporal mechanism} that bipolar disrupts. The manic phenotype ($\pi_{\text{pos}} = 1.5$, $c_{\text{scale}} = 2.0$, $\omega_e = 0.5$) is characterised by low backward-looking positive-belief precision combined with hypersensitive reward processing: RECALL is insufficiently grounding ($\alpha_{\text{recall}} = 0.38$), so the agent defaults to FUTURATE (51\% selection rate) as the dominant affective regulation strategy. This captures the clinical observation that manic optimism is forward-projected rather than backward-grounded \citep{johnson2012behavioral, alloy2010role}. Bipolar disorder thus involves pathological \emph{cycling} of temporal frames: manic episodes are locked FUTURATE (aggressive future-oriented framing that accumulates interoceptive load), crashes are forced FEEL (interoceptive processing), and depressive episodes involve failed temporal flexibility (inability to select any adaptive frame). The depressive and manic profiles share low backward precision but are distinguished by a principled double dissociation: the depressive agent's anhedonia ($c_{\text{scale}} = 0.1$) blocks the forward compensatory pathway, while the manic agent's hypersensitivity ($c_{\text{scale}} = 2.0$) drives aggressive forward projection \citep{alloy2010role}. Chronic stress, by contrast, involves pathological \emph{fixation} without cycling: the agent oscillates between RECALL and FUTURATE without the interoceptive load crisis that forces reset.
 
 \subsection{Depression as Failed Temporal Flexibility}\label{sec:depression}
 
@@ -345,15 +379,11 @@ The depressive agent's near-random policy is the computational signature of this
 
 \subsection{Limitations and Future Directions}\label{sec:limitations}
 
-Several limitations point toward future work. First, the current model treats temporal framing as a single-step policy selection rather than a deep temporal hierarchy \citep{friston2018deep}. Extending to a hierarchical POMDP, with temporal frame inferred at a higher level, would capture narrative entrenchment and flexibility more naturally.
+Several limitations point toward future work. First, while the M5 mood layer implements a hierarchical POMDP over $\pi_{\text{pos}}$, the emotion-level policy selection remains single-step rather than multi-step planning \citep{friston2018deep}. Extending to deep temporal planning at the emotion level, with multi-step lookahead over temporal frame sequences, would better capture narrative entrenchment and flexibility.
 
 Second, the temporal frame is modelled as a categorical variable ($\{$\textsc{past}, \textsc{present}, \textsc{future}$\}$) rather than a continuous temporal depth. In reality, ``the past'' admits degrees, from last week to childhood, and temporal framing may involve selecting a continuous temporal horizon rather than a discrete category.
 
-Third, the $\mathbf{B}_{\text{frame}}$ matrices are fixed rather than learned. An agent that could learn its own temporal attention operators would develop personalised temporal framing strategies, potentially capturing individual differences in temporal orientation as learned generative model parameters.
-
-Fourth, the M4/M5 hierarchy is discussed but not implemented. An explicit mood layer would capture the dynamics of sustained temporal biases (dispositional optimism, chronic rumination) as slow parameters of the generative model, following \citet{hesp2021deeply} and \citet{pezzulo2018hierarchical}.
-
-Finally, the model addresses single-agent temporal framing. Extending to dyadic and multi-agent settings, where agents' temporal frames interact and potentially synchronise, would connect to the temporal aiming literature in social cognition \citep{hinrichs2025temporal} and to the broader project of understanding how shared temporal orientation supports interpersonal coordination \citep{eldar2016mood}.
+Third, the model addresses single-agent temporal framing. Extending to dyadic and multi-agent settings, where agents' temporal frames interact and potentially synchronise, would connect to the temporal aiming literature in social cognition \citep{hinrichs2025temporal} and to the broader project of understanding how shared temporal orientation supports interpersonal coordination \citep{eldar2016mood}.
 
 \bibliographystyle{plainnat}
 \bibliography{references}

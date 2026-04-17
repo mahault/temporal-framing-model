@@ -7,19 +7,20 @@ Clinical parameters modulate action effectiveness:
   - c_scale → reward sensitivity (low = anhedonia, even imagining future
     doesn't produce positive affect)
   - omega_e only affects the AGENT's model, not the environment
-    (energy depletion is objectively real; the manic agent just can't read it)
+    (interoceptive load accumulation is objectively real; the manic agent
+    just can't read it)
 
 Key mechanism:
   Depressive trap: low pi_pos → RECALL fails → low c_scale → FUTURATE
   doesn't help either → valence drifts down from volatility → stuck.
-  Manic cycle: high c_scale → aggressive FUTURATE → energy depletes →
+  Manic cycle: high c_scale → aggressive FUTURATE → load accumulates →
   homeostatic recovery → cycle.
 """
 
 import numpy as np
 from generative_model import (
     flat_idx, N_EXT, N_INT, N_FRAMES,
-    RECALL, ENGAGE, FUTURATE, REST,
+    RECALL, ENGAGE, FUTURATE, FEEL, BLANK,
     PAST, PRESENT, FUTURE,
     _gaussian_col,
 )
@@ -39,6 +40,10 @@ class Environment:
         # Biologically-grounded action effectiveness
         self.recall_eff = 1.0 / (1.0 + np.exp(-(pi_pos - 2.0)))
         self.futurate_eff = min(1.0, c_scale)
+
+    def update_pi_pos(self, pi_pos):
+        """Update recall effectiveness from dynamic pi_pos (M5 mood layer)."""
+        self.recall_eff = 1.0 / (1.0 + np.exp(-(pi_pos - 2.0)))
 
     def reset(self):
         """Neutral start — pathology emerges from agent parameters."""
@@ -71,20 +76,22 @@ class Environment:
                 target = self.true_v + 1
             else:
                 target = self.true_v  # anhedonic — can't feel future reward
-        elif action == REST:
+        elif action == FEEL:
             neutral = K // 2
             target = self.true_v + int(np.sign(neutral - self.true_v))
+        elif action == BLANK:
+            target = self.true_v  # flat affect — no valence change
         else:  # ENGAGE
             target = self.true_v
         target = int(np.clip(target, 0, K - 1))
         self.true_v = self._noisy_step(self.true_v, target, K)
 
-        # --- energy ---
-        e_deltas = {RECALL: 0, ENGAGE: 0, FUTURATE: -1, REST: +2}
+        # --- energy (interoceptive load: positive = load reduction) ---
+        e_deltas = {RECALL: 0, ENGAGE: 0, FUTURATE: -1, FEEL: +2, BLANK: 0}
         e_target = int(np.clip(self.true_e + e_deltas[action], 0, M - 1))
 
-        # Background metabolic cost: all non-REST actions slowly drain
-        if action != REST and self.rng.random() < 0.2:
+        # Background metabolic cost: non-FEEL actions don't process interoceptive signals
+        if action != FEEL and self.rng.random() < 0.2:
             e_target = max(0, e_target - 1)
 
         # Homeostatic recovery: energy drifts toward baseline when very low
@@ -96,7 +103,7 @@ class Environment:
 
         # --- frame ---
         frame_targets = {RECALL: PAST, ENGAGE: PRESENT,
-                         FUTURATE: FUTURE, REST: PRESENT}
+                         FUTURATE: FUTURE, FEEL: PRESENT, BLANK: PRESENT}
         if self.rng.random() < 0.7:
             self.true_f = frame_targets[action]
 
