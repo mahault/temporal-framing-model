@@ -1,6 +1,6 @@
 # Simulation Results — Full Run (T=300, T_sd=3000)
 
-**Date:** 2026-04-17
+**Date:** 2026-04-21
 **Mode:** full (T=300, n_runs=5, n_pi=10, n_omega=10, T_sd=3000)
 **Seed:** 42
 
@@ -12,9 +12,9 @@ Three agent profiles run for T=300 steps under identical environment dynamics.
 
 | Profile    | pi_pos | omega_e | gamma | c_scale | mean_v | mean_e |
 |------------|--------|---------|-------|---------|--------|--------|
-| Healthy    | 5.0    | 5.0     | 16.0  | 1.0     | 0.604  | 0.962  |
-| Depressive | 1.0    | 1.0     | 4.0   | 0.3     | 0.550  | 0.716  |
-| Manic      | 2.0    | 0.5     | 64.0  | 3.0     | 0.660  | 0.268  |
+| Healthy    | 5.0    | 5.0     | 16.0  | 1.0     | 0.620  | 0.945  |
+| Depressive | 0.2    | 5.0     | 16.0  | 0.1     | 0.447  | 0.471  |
+| Manic      | 1.5    | 0.5     | 16.0  | 2.0     | 0.630  | 0.245  |
 
 **Key observations:**
 - Healthy agent maintains high interoceptive load management (mean_e=0.962) and moderate valence
@@ -137,30 +137,30 @@ Long-horizon (T=3000) simulation comparing stable vs stress-then-recovery enviro
 
 ---
 
-## Experiment 11: Psychotic Decompensation — BLANK Emergence (fig15)
+## Experiment 11: Psychotic Decompensation — Two Failure Modes (fig15)
 
-Tests the new BLANK action (5th action: psychosis/dissociation) comparing healthy vs vulnerable profiles.
+Tests two distinct failure modes comparing healthy vs vulnerable profiles.
+Six actions: RECALL, ENGAGE, FUTURATE, FEEL, DISSOCIATE, ABSTRACT.
 
-| Profile    | K | pi_pos | omega_e | volatility | BLANK % | intero_load | mean_v |
-|------------|---|--------|---------|------------|---------|-------------|--------|
-| Healthy    | 8 | 5.0    | 5.0     | 0.3        | **2.0%**  | 0.81        | 0.618  |
-| Vulnerable | 4 | 1.0    | 0.3     | 0.7        | **19.0%** | 1.08        | 0.626  |
+| Profile    | K | pi_pos | omega_e | volatility | DISSOCIATE % | ABSTRACT % | intero_load | mean_v |
+|------------|---|--------|---------|------------|-------------|-----------|-------------|--------|
+| Healthy    | 8 | 5.0    | 5.0     | 0.3        | **1.3%**    | **3.7%**  | 0.97        | 0.623  |
+| Vulnerable | 4 | 1.0    | 0.3     | 0.7        | **14.3%**   | **11.3%** | 1.07        | 0.611  |
 
 **Key observations:**
-- **BLANK is emergent, not hardcoded.** It wins the EFE competition only when directed actions (RECALL, ENGAGE, FUTURATE, FEEL) all have higher expected free energy than the null action.
-- **Healthy agents almost never select BLANK** (2%) — there is always a directed action with lower G.
-- **Vulnerable agents select BLANK 19% of the time.** The combination of low interoceptive precision (omega_e=0.3), low recall precision (pi_pos=1.0), low granularity (K=4), and high volatility creates a regime where:
-  - RECALL fails (low pi_pos → poor counterfactual comparison)
-  - FEEL fails (low omega_e → interoceptive model too imprecise to reduce load)
-  - FUTURATE is costly (drains load with uncertain payoff)
-  - ENGAGE produces volatile outcomes (high ambiguity)
-- **Interoceptive load is elevated** in the vulnerable profile (1.08 vs 0.81), consistent with accumulated unprocessed prediction error under imprecise interoceptive inference.
-- **BLANK locks the agent into PRESENT** — loss of personal historicity (B_frame: 85–90% PRESENT). This is the depersonalization/derealization phenomenology: a vacant present, disconnected from past and future.
-- **Longer horizons amplify the effect**: BLANK was 12% at T=100 (quick mode), rising to 19% at T=300 as interoceptive load accumulates over more steps.
+- **Two distinct failure modes emerge**, both EFE-optimal in the vulnerable regime:
+  - **DISSOCIATE (14.3%)**: Dissociative shutdown — flat affect, present-locked, loss of personal historicity. The agent stops processing. Corresponds to depersonalization/derealization.
+  - **ABSTRACT (11.3%)**: Ungrounded cognition — moderate hedonic signal, future-pulling. The agent is actively thinking but without interoceptive or episodic grounding. Corresponds to the psychosis–creativity axis.
+- **Healthy agents rarely select either** (1.3% DISSOCIATE, 3.7% ABSTRACT) — directed grounded actions always have lower G.
+- **The ABSTRACT→FUTURATE coupling** creates a second hedonic route:
+  - Route 1 (grounded): FEEL → RECALL → FUTURATE (body → past → future)
+  - Route 2 (ungrounded): ABSTRACT → FUTURATE (abstract → future, bypassing body and history)
+- **Psychosis vs depression**: Depression is characterised by anhedonia and collapsed future framing (learned helplessness). The psychotic route is different: a tight ABSTRACT→FUTURATE loop that is cut off from both past and interoception, restoring some sense of agency at the cost of groundedness.
+- **Interoceptive load is elevated** in the vulnerable profile (1.07 vs 0.97), consistent with accumulated unprocessed prediction error.
 
-**Clinical interpretation:** BLANK models the computational signature of psychotic decompensation — when allostatic self-efficacy collapses (all regulatory strategies fail), the agent enters a state of flat affect and temporal disorientation. This is consistent with Sterzer et al. (2018) on aberrant precision in psychosis and Krupnik (2021) on depression as failed anxiety.
+**Clinical interpretation:** The model produces two computationally distinct failure modes — shutdown (DISSOCIATE) and ungrounded spinning (ABSTRACT→FUTURATE). This maps onto the clinical distinction between dissociation and psychosis, both of which can co-occur in vulnerable populations. The ABSTRACT action also provides a computational account of the psychosis–creativity continuum: the same mechanism that produces ungrounded psychotic loops can, when balanced by FEEL and RECALL, support open-ended creative exploration.
 
-**Figure:** `fig15_psychosis.png` — 2×3 panel: action proportions, BLANK rate + intero load over time, frame beliefs, valence trajectory, pi_pos_eff vs pi_pos, channel decomposition
+**Figure:** `fig15_psychosis.png` — 2×3 panel: action proportions, DISSOCIATE + ABSTRACT rates over time, frame beliefs, valence trajectory, pi_pos_eff vs pi_pos, channel decomposition
 
 ---
 
@@ -175,7 +175,7 @@ Tests the new BLANK action (5th action: psychosis/dissociation) comparing health
 | Feedback reliance | 11% valence reduction with impaired recall precision |
 | Chronic stress | Temporal narrowing: PRESENT increases 19%, PAST decreases 21% |
 | Stress decay | 30% pi_pos reduction under sustained stress (emergent depression via M5) |
-| **Psychosis** | **BLANK emerges at 19% in vulnerable agents; interoceptive load 33% higher; present-locked temporal frame** |
+| **Psychosis** | **Two failure modes: DISSOCIATE (14.3%) + ABSTRACT (11.3%) in vulnerable agents; two hedonic routes (grounded vs ungrounded)** |
 
 ---
 
@@ -185,7 +185,8 @@ The REST→FEEL rename and interoceptive load reinterpretation (Manon's proposal
 
 1. **FEEL as active interoceptive processing**: Agents that can FEEL effectively (high omega_e) maintain low interoceptive load and stable affect
 2. **Load accumulation under imprecise interoception**: Low omega_e → FEEL doesn't reduce load → PE accumulates → pi_pos_eff drops
-3. **BLANK as computational learned helplessness**: Emerges only when all directed actions fail — not a parameter choice but an EFE-optimal response to regulatory collapse
-4. **Dual-timescale coupling**: Fast interoceptive pathway (every step) + slow M5 mood pathway (every T_mood steps) creates rich temporal dynamics visible in fig13 and fig15
+3. **DISSOCIATE as computational learned helplessness**: Emerges only when all directed actions fail — not a parameter choice but an EFE-optimal response to regulatory collapse
+4. **ABSTRACT as ungrounded cognition**: Provides a second hedonic route (ABSTRACT→FUTURATE) that bypasses interoception and episodic recall — models the psychosis–creativity continuum
+5. **Dual-timescale coupling**: Fast interoceptive pathway (every step) + slow M5 mood pathway (every T_mood steps) creates rich temporal dynamics visible in fig13 and fig15
 
 **References:** Stephan et al. (2016), Seth & Friston (2016), Barrett (2017), Smith et al. (2020), Sandved-Smith et al. (2021), Pezzulo et al. (2015)

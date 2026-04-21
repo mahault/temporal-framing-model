@@ -17,7 +17,7 @@ The agent is a partially observable Markov decision process (POMDP) with factore
 | **Interoceptive load** | M levels (default 8) | Accumulated unprocessed bodily prediction error |
 | **Frame** | 3 (Past / Present / Future) | Active temporal orientation |
 
-The agent selects among five **temporal-framing policies**:
+The agent selects among six **temporal-framing policies**:
 
 | Action | Description |
 |--------|-------------|
@@ -25,7 +25,12 @@ The agent selects among five **temporal-framing policies**:
 | **ENGAGE** | Attend to the present (valence-preserving) |
 | **FUTURATE** | Simulate future scenarios (high load cost, high potential valence gain) |
 | **FEEL** | Active interoceptive processing — reduces accumulated prediction error |
-| **BLANK** | Null action (flat affect, present-locked) — emergent under regulatory collapse |
+| **DISSOCIATE** | Dissociative null action (flat affect, present-locked) — emergent under regulatory collapse |
+| **ABSTRACT** | Effortful ungrounded cognition — future-pulling, couples with FUTURATE to form a second hedonic route |
+
+The six actions support two hedonic routes:
+- **Grounded**: FEEL → RECALL → FUTURATE (body → past → future)
+- **Ungrounded**: ABSTRACT → FUTURATE (abstract → future, bypassing body and history)
 
 Policy selection follows expected free energy (EFE) minimisation with softmax action selection.
 
@@ -82,7 +87,7 @@ The simulation suite runs 11 experiments generating 15 publication figures:
 | 8 | Chronic stress | fig12 | Does stress narrow temporal orientation toward the present? |
 | 9 | pi_pos dynamics | fig13 | Does the M5 mood layer produce slow mood drift? |
 | 10 | Stress decay | fig14 | Can sustained stress produce emergent depression via pi_pos decay? |
-| 11 | Psychotic decompensation | fig15 | Does BLANK emerge when all directed actions fail? |
+| 11 | Psychotic decompensation | fig15 | Do DISSOCIATE and ABSTRACT emerge as distinct failure modes? |
 
 See `RESULTS.md` for full numerical results from the latest run.
 

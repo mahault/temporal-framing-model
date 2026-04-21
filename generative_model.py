@@ -10,12 +10,15 @@ Observations:
   o_val (K): felt valence
 
 Actions:
-  RECALL(0), ENGAGE(1), FUTURATE(2), FEEL(3), BLANK(4)
+  RECALL(0), ENGAGE(1), FUTURATE(2), FEEL(3), DISSOCIATE(4), ABSTRACT(5)
 
   FEEL: active interoceptive processing — reduces accumulated prediction error
         (reframed from REST; Sandved-Smith et al. 2021, Stephan et al. 2016)
-  BLANK: psychotic/dissociative null action — flat affect, present-locked,
-         loss of personal historicity (Sterzer et al. 2018)
+  DISSOCIATE: dissociative null action — flat affect, present-locked,
+              loss of personal historicity (Sterzer et al. 2018)
+  ABSTRACT: effortful ungrounded cognition — coarse hedonic signal,
+            future-pulling, couples with FUTURATE to form a second
+            hedonic route bypassing interoception and episodic recall
 
 Clinical parameters:
   pi_pos:  precision on positive self-beliefs (controls D prior + RECALL pull)
@@ -28,14 +31,15 @@ from dataclasses import dataclass, field
 from typing import List
 
 # ── Constants ──────────────────────────────────────────────
-RECALL, ENGAGE, FUTURATE, FEEL, BLANK = 0, 1, 2, 3, 4
-REST = FEEL   # backward compatibility alias
+RECALL, ENGAGE, FUTURATE, FEEL, DISSOCIATE, ABSTRACT = 0, 1, 2, 3, 4, 5
+REST = FEEL        # backward compatibility alias
+BLANK = DISSOCIATE  # backward compatibility alias
 PAST, PRESENT, FUTURE = 0, 1, 2
-N_ACTIONS = 5
+N_ACTIONS = 6
 N_FRAMES = 3
 N_EXT = 3   # neg / neutral / pos
 N_INT = 3   # depleted / neutral / energised
-ACTION_NAMES = ['RECALL', 'ENGAGE', 'FUTURATE', 'FEEL', 'BLANK']
+ACTION_NAMES = ['RECALL', 'ENGAGE', 'FUTURATE', 'FEEL', 'DISSOCIATE', 'ABSTRACT']
 FRAME_NAMES = ['PAST', 'PRESENT', 'FUTURE']
 EPS = 1e-16
 
@@ -234,11 +238,21 @@ def B_valence(K, action, pi_pos):
             stay = _gaussian_col(K, v, 4.0)
             B[:, v] = 0.3 * toward + 0.7 * stay
 
-        elif action == BLANK:
+        elif action == DISSOCIATE:
             # Flat affect: mostly stay, slight drift toward neutral
             stay = _gaussian_col(K, v, 5.0)
             neutral = _gaussian_col(K, (K - 1) / 2.0, 1.5)
             B[:, v] = 0.9 * stay + 0.1 * neutral
+
+        elif action == ABSTRACT:
+            # Moderate positive pull — "budget FUTURATE"
+            # Pulls toward ~70% max valence (vs FUTURATE's 100%)
+            # Tighter prediction than "coarse" would suggest — the agent
+            # BELIEVES abstract thinking will moderately improve valence
+            target_abstract = (K - 1) * 0.7
+            pull = _gaussian_col(K, target_abstract, 3.0)
+            stay = _gaussian_col(K, v, 5.0)
+            B[:, v] = 0.35 * stay + 0.65 * pull
 
     B /= (B.sum(axis=0, keepdims=True) + EPS)
     return B
@@ -250,7 +264,8 @@ def B_energy(M, action):
     Reinterpreted as load accumulation: positive delta = load reduction (FEEL),
     negative delta = load increase (FUTURATE ignores body signals).
     """
-    deltas = {RECALL: 0.0, ENGAGE: -0.5, FUTURATE: -1.2, FEEL: 1.2, BLANK: -0.3}
+    deltas = {RECALL: 0.0, ENGAGE: -0.5, FUTURATE: -1.2, FEEL: 1.2,
+              DISSOCIATE: -0.3, ABSTRACT: 0.0}
     delta = deltas[action]
     B = np.zeros((M, M))
     for e in range(M):
@@ -283,10 +298,15 @@ def B_frame(action):
             [0.50, 0.60, 0.50],
             [0.20, 0.20, 0.30],
         ]),
-        BLANK: np.array([
+        DISSOCIATE: np.array([
             [0.05, 0.05, 0.05],   # → PAST  (historicity cut off)
             [0.90, 0.90, 0.85],   # → PRESENT (locked in)
             [0.05, 0.05, 0.10],   # → FUTURE (historicity cut off)
+        ]),
+        ABSTRACT: np.array([
+            [0.05, 0.05, 0.05],   # → PAST  (cut off from episodic grounding)
+            [0.30, 0.35, 0.15],   # → PRESENT
+            [0.65, 0.60, 0.80],   # → FUTURE (couples with FUTURATE)
         ]),
     }
     B = matrices[action].copy()

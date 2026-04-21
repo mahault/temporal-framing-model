@@ -20,7 +20,7 @@ Key mechanism:
 import numpy as np
 from generative_model import (
     flat_idx, N_EXT, N_INT, N_FRAMES,
-    RECALL, ENGAGE, FUTURATE, FEEL, BLANK,
+    RECALL, ENGAGE, FUTURATE, FEEL, DISSOCIATE, ABSTRACT,
     PAST, PRESENT, FUTURE,
     _gaussian_col,
 )
@@ -79,15 +79,22 @@ class Environment:
         elif action == FEEL:
             neutral = K // 2
             target = self.true_v + int(np.sign(neutral - self.true_v))
-        elif action == BLANK:
+        elif action == DISSOCIATE:
             target = self.true_v  # flat affect — no valence change
+        elif action == ABSTRACT:
+            # Mild positive pull — coarse hedonic signal from ungrounded cognition
+            if self.rng.random() < 0.4:
+                target = min(self.true_v + 1, K - 1)
+            else:
+                target = self.true_v
         else:  # ENGAGE
             target = self.true_v
         target = int(np.clip(target, 0, K - 1))
         self.true_v = self._noisy_step(self.true_v, target, K)
 
         # --- energy (interoceptive load: positive = load reduction) ---
-        e_deltas = {RECALL: 0, ENGAGE: 0, FUTURATE: -1, FEEL: +2, BLANK: 0}
+        e_deltas = {RECALL: 0, ENGAGE: 0, FUTURATE: -1, FEEL: +2,
+                    DISSOCIATE: 0, ABSTRACT: -1}
         e_target = int(np.clip(self.true_e + e_deltas[action], 0, M - 1))
 
         # Background metabolic cost: non-FEEL actions don't process interoceptive signals
@@ -103,7 +110,8 @@ class Environment:
 
         # --- frame ---
         frame_targets = {RECALL: PAST, ENGAGE: PRESENT,
-                         FUTURATE: FUTURE, FEEL: PRESENT, BLANK: PRESENT}
+                         FUTURATE: FUTURE, FEEL: PRESENT,
+                         DISSOCIATE: PRESENT, ABSTRACT: FUTURE}
         if self.rng.random() < 0.7:
             self.true_f = frame_targets[action]
 

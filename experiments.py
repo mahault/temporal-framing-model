@@ -386,14 +386,14 @@ PSYCHOSIS_PROFILES = {
         volatility=0.7,
         desc='Psychosis-vulnerable: very low interoceptive precision, '
              'moderate reward sensitivity, low recall precision, '
-             'high volatility — BLANK emerges when all directed actions fail',
+             'high volatility — DISSOCIATE and ABSTRACT emerge as failure modes',
     ),
 }
 
 
 def run_psychosis_experiment(T=300, seed=42):
     """
-    Experiment 8: Psychotic decompensation via BLANK action.
+    Experiment 8: Psychotic decompensation — two failure modes.
 
     The vulnerable profile has:
       - omega_e=0.3: very low interoceptive precision — agent can't read load
@@ -401,18 +401,20 @@ def run_psychosis_experiment(T=300, seed=42):
       - c_scale=1.5: moderate reward sensitivity
       - volatility=0.7: high environmental stress
 
-    Expected: After interoceptive load accumulates and pi_pos_eff degrades,
-    all directed actions (RECALL, ENGAGE, FUTURATE, FEEL) become EFE-costly.
-    BLANK emerges as the least-bad option: flat affect, present-locked,
-    loss of personal historicity (Sterzer et al. 2018).
+    Expected: Two distinct failure modes emerge:
+      - DISSOCIATE: flat affect, present-locked (dissociative shutdown)
+      - ABSTRACT: effortful ungrounded cognition, future-pulling
+        (ABSTRACT→FUTURATE loop = psychotic spiral)
     """
     results = {}
     for name, prof in PSYCHOSIS_PROFILES.items():
         print(f"    {name} …", end=" ", flush=True)
         results[name] = run_trial(**prof, T=T, seed=seed)
         mv = np.mean(results[name]['valence_belief'])
-        from generative_model import BLANK
-        blank_frac = np.mean(results[name]['action'] == BLANK)
+        from generative_model import DISSOCIATE, ABSTRACT
+        dissoc_frac = np.mean(results[name]['action'] == DISSOCIATE)
+        abstract_frac = np.mean(results[name]['action'] == ABSTRACT)
         ml = np.mean(results[name]['intero_load'])
-        print(f"mean_v={mv:.3f}  BLANK={blank_frac:.3f}  intero_load={ml:.2f}")
+        print(f"mean_v={mv:.3f}  DISSOC={dissoc_frac:.3f}  "
+              f"ABSTRACT={abstract_frac:.3f}  intero_load={ml:.2f}")
     return results

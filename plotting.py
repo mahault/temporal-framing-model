@@ -20,8 +20,8 @@ Figure 12 – Chronic stress        (stressed vs healthy: frame beliefs,
 import numpy as np
 import matplotlib.pyplot as plt
 from generative_model import (ACTION_NAMES, N_ACTIONS, FUTURATE, RECALL,
-                              ENGAGE, FEEL, BLANK, FRAME_NAMES,
-                              N_MOOD, MOOD_BIN_CENTERS)
+                              ENGAGE, FEEL, DISSOCIATE, ABSTRACT,
+                              FRAME_NAMES, N_MOOD, MOOD_BIN_CENTERS)
 
 # ── Style ──────────────────────────────────────────────────
 plt.rcParams.update({
@@ -30,7 +30,7 @@ plt.rcParams.update({
 })
 
 PCOL = {'healthy': '#2ecc71', 'depressive': '#3498db', 'manic': '#e74c3c'}
-ACOL = ['#8e44ad', '#2ecc71', '#e74c3c', '#95a5a6', '#34495e']   # RECALL ENGAGE FUTURATE FEEL BLANK
+ACOL = ['#8e44ad', '#2ecc71', '#e74c3c', '#95a5a6', '#34495e', '#e67e22']   # RECALL ENGAGE FUTURATE FEEL DISSOCIATE ABSTRACT
 
 
 # ── Smoothing helper ───────────────────────────────────────
@@ -999,7 +999,7 @@ def plot_framing_dynamics(results, save_path=None):
     # ── (e) Post-action valence stability (Gap A) ────────
     ax = axes[1, 1]
     win = 5
-    action_subset = [RECALL, ENGAGE, FUTURATE, FEEL, BLANK]
+    action_subset = [RECALL, ENGAGE, FUTURATE, FEEL, DISSOCIATE, ABSTRACT]
     x = np.arange(len(action_subset))
     w = 0.22
     for i, name in enumerate(names):
@@ -1341,10 +1341,11 @@ _PSCOL = {'healthy': '#2ecc71', 'vulnerable': '#9b59b6'}
 
 def plot_psychosis(results, save_path=None):
     """
-    Figure 15: Psychotic Decompensation via BLANK Action (2x3).
+    Figure 15: Psychotic Decompensation via DISSOCIATE and ABSTRACT (2x3).
 
-    Row 1: (a) Action proportions comparison, (b) BLANK + interoceptive load
-           over time, (c) Frame beliefs
+    Row 1: (a) Action proportions comparison,
+           (b) DISSOCIATE + ABSTRACT rates over time,
+           (c) Frame beliefs
     Row 2: (d) Valence trajectory, (e) pi_pos_eff vs pi_pos,
            (f) Temporal orientation (stacked area)
     """
@@ -1373,23 +1374,28 @@ def plot_psychosis(results, save_path=None):
     ax.legend(fontsize=9)
     ax.set_ylim(0, ax.get_ylim()[1] * 1.15)
 
-    # ── (b) BLANK rate + interoceptive load over time ──────
+    # ── (b) DISSOCIATE + ABSTRACT rates over time ──────────
     ax = axes[0, 1]
     win = 20
     for name in names:
         h = results[name]
         T = len(h['action'])
         t = np.arange(T)
-        blank_rate = np.convolve(
-            (h['action'] == BLANK).astype(float),
+        dissoc_rate = np.convolve(
+            (h['action'] == DISSOCIATE).astype(float),
             np.ones(win) / win, mode='same')
-        ax.plot(t, blank_rate, color=_PSCOL[name], lw=1.5,
-                label=f'{name.capitalize()} BLANK rate')
-    ax.set_ylabel('BLANK selection rate (rolling)')
+        abstract_rate = np.convolve(
+            (h['action'] == ABSTRACT).astype(float),
+            np.ones(win) / win, mode='same')
+        ax.plot(t, dissoc_rate, color=_PSCOL[name], lw=1.5,
+                label=f'{name.capitalize()} DISSOCIATE')
+        ax.plot(t, abstract_rate, color=_PSCOL[name], lw=1.2, ls='--',
+                label=f'{name.capitalize()} ABSTRACT')
+    ax.set_ylabel('Selection rate (rolling)')
     ax.set_xlabel('Timestep')
-    ax.set_title('(b) BLANK Rate Over Time')
+    ax.set_title('(b) DISSOCIATE + ABSTRACT Over Time')
     ax.set_ylim(-0.05, 1.05)
-    ax.legend(fontsize=7)
+    ax.legend(fontsize=6)
 
     ax2 = ax.twinx()
     for name in names:
@@ -1397,7 +1403,7 @@ def plot_psychosis(results, save_path=None):
         T = len(h['intero_load'])
         t = np.arange(T)
         ax2.plot(t, _ema(h['intero_load'], sm_alpha), color=_PSCOL[name],
-                 lw=1.0, ls='--', alpha=0.6)
+                 lw=1.0, ls=':', alpha=0.6)
     ax2.set_ylabel('Interoceptive load (EMA)', fontsize=8)
 
     # ── (c) Frame beliefs — FUTURE vs PRESENT ─────────────
@@ -1474,7 +1480,7 @@ def plot_psychosis(results, save_path=None):
     ax.set_title('(f) Vulnerable Agent: Valence Channels')
     ax.legend(fontsize=7)
 
-    fig.suptitle('Psychotic Decompensation: BLANK as Dissociative Refuge',
+    fig.suptitle('Psychotic Decompensation: Two Failure Modes',
                  fontsize=14, y=1.02)
     plt.tight_layout()
     if save_path:
