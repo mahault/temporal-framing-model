@@ -24,8 +24,8 @@ import numpy as np
 from generative_model import (ModelSpec, N_ACTIONS, EPS,
                               B_frame, rebuild_B_single, rebuild_B_with_frame,
                               N_MOOD, MOOD_BIN_CENTERS, N_OBS_MOOD,
-                              MOOD_OBS_EDGES,
-                              build_A_mood, build_B_mood, build_D_mood)
+                              _compute_vfe_curve, _build_A_mood_from_vfe,
+                              build_B_mood, build_D_mood)
 
 
 class Agent:
@@ -33,6 +33,10 @@ class Agent:
                  tau_model: float = 0.5, tau_reward: float = 2.0,
                  tau_action: float = 1.0,
                  pi_pos: float = 5.0, T_mood: int = 50,
+                 omega_e: float = 5.0, c_scale: float = 1.0,
+                 c_pos: float = None, c_neg: float = None,
+                 neg_val_precision: float = 1.0,
+                 habit_E: np.ndarray = None,
                  learn_B_frame: bool = False, frame_concentration: float = 50.0,
                  seed: int = 0):
         self.model = model
@@ -44,17 +48,26 @@ class Agent:
         self.beliefs = model.D.copy()
         self.prev_action = None
         self._vfe_prev = None
+        # E vector: log-prior over policies (habit prior, Da Costa et al. 2020)
+        # Additive in log-space: log_pi = -gamma*G + E
+        # None → uniform prior (no habit bias), backward compatible
+        self._habit_E = habit_E
         self._pi_prev = None    # previous policy for affective charge
 
-        # ── M5 mood layer: hierarchical POMDP over pi_pos ──
+        # ── M5 mood layer: per-model calibrated POMDP over pi_pos ──
         self.pi_pos = float(pi_pos)
         self._initial_pi_pos = float(pi_pos)
         self.T_mood = T_mood
-        self.A_mood = build_A_mood()
+        # Analytical VFE curve for this model's (K, M, omega_e, c_scale)
+        self._vfe_curve = _compute_vfe_curve(model.K, model.M, omega_e, c_scale,
+                                             c_pos=c_pos, c_neg=c_neg,
+                                             neg_val_precision=neg_val_precision)
+        self.A_mood, self._mood_obs_edges = _build_A_mood_from_vfe(self._vfe_curve)
         self.B_mood = build_B_mood()
         self.mood_beliefs = build_D_mood(pi_pos)
         self._vfe_buffer = []
         self._step_count = 0
+        self._mood_calibrated = False   # online offset not yet applied
 
         # ── Interoceptive load coupling (Stephan et al. 2016) ──
         self._intero_vfe_ema = 0.0       # running interoceptive surprise
@@ -84,6 +97,9 @@ class Agent:
         self._vfe_buffer = []
         self._step_count = 0
         self._intero_vfe_ema = 0.0
+        # Reset mood calibration (re-use stored analytical curve)
+        self._mood_calibrated = False
+        self.A_mood, self._mood_obs_edges = _build_A_mood_from_vfe(self._vfe_curve)
 
     # ── Main loop ──────────────────────────────────────────
     def step(self, obs):
@@ -164,9 +180,14 @@ class Agent:
             self._rebuild_B()   # only needed when B_frame changes
 
         # Channel 2: v_reward — present (Pattisapu et al. 2024)
-        U = sum(self._log_pref[m][obs[m]] for m in range(len(obs)))
+        # Hedonic modalities only (ext=0, val=2) for FELT valence.
+        # Interoceptive modality (1) drives EFE/policy (allostatic regulation)
+        # but does not produce conscious hedonic experience — body-budget
+        # maintenance is largely preconscious (Seth 2013, Barrett 2017).
+        _HEDONIC = [0, 2]   # o_ext, o_val
+        U = sum(self._log_pref[m][obs[m]] for m in _HEDONIC)
         EU = 0.0
-        for m in range(len(self.model.A)):
+        for m in _HEDONIC:
             q_o = self.model.A[m] @ q_pred
             q_o = np.maximum(q_o, EPS)
             q_o /= q_o.sum()
@@ -182,6 +203,8 @@ class Agent:
         G = np.array([self._efe(a) for a in range(N_ACTIONS)])
 
         log_pi = -self.gamma * G
+        if self._habit_E is not None:
+            log_pi = log_pi + self._habit_E
         log_pi -= log_pi.max()
         pi = np.exp(log_pi)
         pi /= (pi.sum() + EPS)
@@ -242,14 +265,28 @@ class Agent:
 
         Aggregates VFE over the last T_mood steps, bins the mean,
         and performs one step of prediction-update on the mood posterior.
-        Higher mean VFE → evidence for lower mood states (more surprises).
-        The expected pi_pos is then extracted and used to rebuild B.
+        The A_mood matrix is calibrated per-model (K, M, omega_e) so that
+        VFE observations are correctly mapped to mood states regardless
+        of absolute VFE level.
+
+        On the first mood window, an online offset correction aligns
+        the analytical VFE curve with the agent's actual VFE.
         """
         window = self._vfe_buffer[-self.T_mood:]
         mean_vm = float(np.mean(window))
 
+        # Online calibration: shift analytical curve to match observed VFE
+        if not self._mood_calibrated:
+            analytical_at_current = float(np.interp(
+                self.pi_pos, MOOD_BIN_CENTERS, self._vfe_curve))
+            vfe_offset = mean_vm - analytical_at_current
+            calibrated_curve = self._vfe_curve + vfe_offset
+            self.A_mood, self._mood_obs_edges = _build_A_mood_from_vfe(
+                calibrated_curve)
+            self._mood_calibrated = True
+
         # Bin the observation
-        o_mood = int(np.digitize(mean_vm, MOOD_OBS_EDGES[1:-1]))
+        o_mood = int(np.digitize(mean_vm, self._mood_obs_edges[1:-1]))
         o_mood = min(o_mood, N_OBS_MOOD - 1)
 
         # Predict (slow mood transition)

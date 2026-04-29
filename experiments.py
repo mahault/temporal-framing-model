@@ -23,17 +23,27 @@ PROFILES = {
     ),
     'depressive': dict(
         K=4, M=8, pi_pos=0.2, omega_e=5.0, gamma=16.0, c_scale=0.1,
-        desc='Low positive-belief precision, low granularity, anhedonic',
+        c_pos=0.1, c_neg=2.0, neg_val_precision=1.0,
+        habit_E=np.array([10, 0, -1, 0, 0, -1], dtype=float),
+        desc='Asymmetric hedonic sensitivity (c_pos=0.1, c_neg=2.0) with '
+             'RECALL habit prior and FUT/ABS aversion (E vector). Produces '
+             'past-directed rumination (RECALL dominant, PAST frame) with '
+             'negative v_reward and near-zero valence.',
     ),
     'manic': dict(
-        K=4, M=8, pi_pos=1.5, omega_e=0.5, gamma=16.0, c_scale=2.0,
-        desc='Forward-projected optimism, poor interoception, hypersensitive reward',
+        K=4, M=8, pi_pos=1.5, omega_e=0.5, gamma=16.0, c_scale=6.0,
+        volatility=0.15,
+        desc='Forward-projected optimism, poor interoception, '
+             'strongly amplified reward sensitivity (c_scale=6.0) with low volatility '
+             '— produces elevated valence above healthy baseline',
     ),
 }
 
 
 # ── Single trial ───────────────────────────────────────────
 def run_trial(K=8, M=5, pi_pos=5.0, omega_e=5.0, gamma=16.0, c_scale=1.0,
+              c_pos=None, c_neg=None, neg_val_precision=1.0,
+              habit_E=None,
               T=300, volatility=0.45, seed=42, T_mood=50,
               learn_B_frame=False, frame_concentration=50.0, **_ignored):
     """
@@ -42,13 +52,19 @@ def run_trial(K=8, M=5, pi_pos=5.0, omega_e=5.0, gamma=16.0, c_scale=1.0,
     Returns dict of (T,)-shaped arrays for every tracked variable.
     """
     model = build_model(K=K, M=M, pi_pos=pi_pos, omega_e=omega_e,
-                        gamma=gamma, c_scale=c_scale)
+                        gamma=gamma, c_scale=c_scale,
+                        c_pos=c_pos, c_neg=c_neg,
+                        neg_val_precision=neg_val_precision)
     agent = Agent(model, gamma=gamma, pi_pos=pi_pos, T_mood=T_mood,
+                  omega_e=omega_e, c_scale=c_scale,
+                  c_pos=c_pos, c_neg=c_neg,
+                  neg_val_precision=neg_val_precision,
+                  habit_E=habit_E,
                   learn_B_frame=learn_B_frame,
                   frame_concentration=frame_concentration,
                   seed=seed + 1)
     env = Environment(K=K, M=M, volatility=volatility, seed=seed,
-                      pi_pos=pi_pos, c_scale=c_scale)
+                      pi_pos=pi_pos, c_scale=c_scale, c_pos=c_pos)
 
     hist = _make_history(T, K)
     obs = env.reset()
@@ -218,7 +234,8 @@ EMOTION_PROFILES = {
         volatility=0.3,
     ),
     'excited': dict(
-        K=4, M=8, pi_pos=5.0, omega_e=0.5, gamma=4.0, c_scale=2.5,
+        K=4, M=8, pi_pos=5.0, omega_e=0.5, gamma=4.0, c_scale=4.0,
+        habit_E=np.array([-1, 0, 1, 0, 0, 0], dtype=float),
         volatility=0.45,
     ),
     'alert': dict(
@@ -227,6 +244,7 @@ EMOTION_PROFILES = {
     ),
     'angry': dict(
         K=8, M=8, pi_pos=0.1, omega_e=0.2, gamma=16.0, c_scale=5.0,
+        c_pos=0.5, c_neg=5.0,
         volatility=0.8,
     ),
     'fearful': dict(
@@ -235,10 +253,14 @@ EMOTION_PROFILES = {
     ),
     'sad': dict(
         K=4, M=8, pi_pos=0.1, omega_e=3.0, gamma=16.0, c_scale=0.25,
+        c_pos=0.25, c_neg=1.0, neg_val_precision=1.0,
+        habit_E=np.array([7, 0, 0, 0, 0, 0], dtype=float),
         volatility=0.6,
     ),
     'depressed': dict(
         K=4, M=8, pi_pos=0.2, omega_e=5.0, gamma=16.0, c_scale=0.1,
+        c_pos=0.1, c_neg=2.0, neg_val_precision=1.0,
+        habit_E=np.array([10, 0, -1, 0, 0, -1], dtype=float),
         volatility=0.45,
     ),
     'bored': dict(
@@ -297,10 +319,11 @@ STRESS_PROFILES = {
         desc='Balanced precision, low-volatility environment',
     ),
     'stressed': dict(
-        K=8, M=8, pi_pos=3.0, omega_e=0.5, gamma=16.0, c_scale=2.0,
-        volatility=0.7,
-        desc='Chronic stress: high volatility + reward hypersensitivity '
-             '+ stress-impaired interoception → future overmentalising',
+        K=8, M=8, pi_pos=2.5, omega_e=0.5, gamma=16.0, c_scale=2.0,
+        volatility=0.9,
+        desc='Chronic stress: very high volatility (0.9) + reward hypersensitivity '
+             '+ stress-impaired interoception + reduced pi_pos → negative valence '
+             'from chronic prediction violation and hedonic disappointment',
     ),
 }
 
@@ -310,23 +333,27 @@ def run_chronic_stress_experiment(T=300, seed=42):
     Gap D: Chronic stress as maladaptive stabilisation of future framing.
 
     The stressed agent has:
-      - pi_pos=3.0: RECALL works moderately (not blocked like depressive)
+      - pi_pos=2.5: RECALL partially works (not blocked like depressive),
+        enough to enable some futile retrieval attempts
       - c_scale=2.0: reward hypersensitivity makes FUTURATE attractive
         (amplified C vectors increase EFE risk reduction in valence modality)
       - omega_e=0.5: stress-impaired interoception -- chronic stress reduces
         interoceptive accuracy (clinically: alexithymia under stress), which
         prevents the energy-depletion risk term from deterring FUTURATE
-      - volatility=0.7: chronically stressful environment
+      - volatility=0.9: very high environmental volatility — chronic prediction
+        violation drives v_reward strongly negative (FUTURATE raises EU via
+        solution-state pull, but volatile environment lowers U)
 
-    Under standard EFE policy selection pi(a) ~ exp(-gamma * G(a)),
-    FUTURATE becomes competitive when the interoceptive A matrix is
-    blurred: the agent cannot predict energy depletion, so the o_int
-    risk term no longer penalises FUTURATE. Combined with high c_scale
-    amplifying the valence risk reduction, FUTURATE enters the policy mix.
+    The key mechanism for negative valence is the v_reward channel:
+    FUTURATE's B_v pull (50% toward max valence) elevates expected utility
+    (EU), but the highly volatile environment delivers observations below
+    expectation (U < EU), producing persistent negative hedonic surprise.
+    v_action remains positive (policy revision from volatility), but
+    v_reward dominates at vol=0.9.
 
-    Expected: The stressed agent shows elevated FUTURATE selection and
-    future frame belief, with lower v_model (backward channel) reflecting
-    chronic model-fit deterioration from the volatile environment.
+    Expected: The stressed agent shows elevated FUTURATE selection (~69%),
+    future frame belief, and *negative* composite valence (~-0.03) from
+    chronic hedonic disappointment despite persistent forward mentalising.
     """
     results = {}
     for name, prof in STRESS_PROFILES.items():

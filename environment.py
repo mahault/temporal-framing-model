@@ -28,7 +28,7 @@ from generative_model import (
 
 class Environment:
     def __init__(self, K=8, M=8, volatility=0.3, seed=None,
-                 pi_pos=5.0, c_scale=1.0, **_ignored):
+                 pi_pos=5.0, c_scale=1.0, c_pos=None, **_ignored):
         self.K = K
         self.M = M
         self.volatility = volatility
@@ -39,7 +39,11 @@ class Environment:
 
         # Biologically-grounded action effectiveness
         self.recall_eff = 1.0 / (1.0 + np.exp(-(pi_pos - 2.0)))
-        self.futurate_eff = min(1.0, c_scale)
+        # futurate_eff: positive-reward sensitivity determines whether
+        # imagining the future produces positive affect in the environment.
+        # c_pos (if given) is the relevant asymmetric parameter.
+        futurate_scale = c_pos if c_pos is not None else c_scale
+        self.futurate_eff = min(1.0, futurate_scale)
 
     def update_pi_pos(self, pi_pos):
         """Update recall effectiveness from dynamic pi_pos (M5 mood layer)."""
@@ -111,8 +115,10 @@ class Environment:
         # --- frame ---
         frame_targets = {RECALL: PAST, ENGAGE: PRESENT,
                          FUTURATE: FUTURE, FEEL: PRESENT,
-                         DISSOCIATE: PRESENT, ABSTRACT: FUTURE}
-        if self.rng.random() < 0.7:
+                         ABSTRACT: FUTURE}
+        if action == DISSOCIATE:
+            pass  # frame unchanged — temporal drifting, no directed orientation
+        elif self.rng.random() < 0.7:
             self.true_f = frame_targets[action]
 
     def _apply_volatility(self):

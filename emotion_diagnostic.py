@@ -35,7 +35,8 @@ EMOTION_PROFILES = {
     # High c_scale → high arousal; LOW gamma → flat policy (low D)
     # High pi_pos → positive valence
     'excited': dict(
-        K=4, M=8, pi_pos=5.0, omega_e=0.5, gamma=4.0, c_scale=2.5,
+        K=4, M=8, pi_pos=5.0, omega_e=0.5, gamma=4.0, c_scale=4.0,
+        habit_E=np.array([-1, 0, 1, 0, 0, 0], dtype=float),
         volatility=0.45,
     ),
     # (near 0 V, +D, high A): vigilant, uncertain environment
@@ -48,6 +49,7 @@ EMOTION_PROFILES = {
     # Low pi_pos + high volatility → negative valence
     'angry': dict(
         K=8, M=8, pi_pos=0.1, omega_e=0.2, gamma=16.0, c_scale=5.0,
+        c_pos=0.5, c_neg=5.0,
         volatility=0.8,
     ),
     # (-V, -D, high A): negative, helpless, activated — threat
@@ -60,11 +62,15 @@ EMOTION_PROFILES = {
     # (-V, moderate-low D, low A): negative, low energy, passive
     'sad': dict(
         K=4, M=8, pi_pos=0.1, omega_e=3.0, gamma=16.0, c_scale=0.25,
+        c_pos=0.25, c_neg=1.0, neg_val_precision=1.0,
+        habit_E=np.array([7, 0, 0, 0, 0, 0], dtype=float),
         volatility=0.6,
     ),
     # (-V, -D, low A): negative, helpless, deactivated
     'depressed': dict(
         K=4, M=8, pi_pos=0.2, omega_e=5.0, gamma=16.0, c_scale=0.1,
+        c_pos=0.1, c_neg=2.0, neg_val_precision=1.0,
+        habit_E=np.array([10, 0, -1, 0, 0, -1], dtype=float),
         volatility=0.45,
     ),
     # (near 0 V, -D, low A): flat, unmotivated

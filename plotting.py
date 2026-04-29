@@ -54,16 +54,20 @@ def plot_phenotypes(results, save_path=None):
         t = np.arange(T)
         c = PCOL[name]
 
-        # valence (smoothed)
+        # composite valence (three-channel felt experience)
         ax = axes[row, 0]
-        ax.plot(t, _ema(h['valence_true'], 0.15), alpha=0.4, color='gray',
-                lw=0.8, label='True')
-        ax.plot(t, _ema(h['valence_belief'], 0.15), color=c, lw=1.5,
-                label='Believed')
-        ax.set_ylim(-0.05, 1.05)
+        v_comp = _ema(h['valence'], 0.15)
+        ax.plot(t, v_comp, color=c, lw=1.5)
+        mean_v = np.mean(h['valence'])
+        ax.axhline(mean_v, color=c, lw=0.8, ls=':', alpha=0.5)
+        ax.text(T * 0.02, mean_v + 0.02, f'$\\bar{{V}}$={mean_v:+.3f}',
+                fontsize=7, color=c, fontweight='bold',
+                bbox=dict(facecolor='white', alpha=0.7, pad=1,
+                          edgecolor='none'))
+        ax.axhline(0, color='gray', lw=0.5, ls=':')
+        ax.set_ylim(-0.5, 0.5)
         if row == 0:
-            ax.set_title('Valence')
-            ax.legend(fontsize=7)
+            ax.set_title('Composite Valence')
         ax.set_ylabel(name.capitalize())
 
         # energy (smoothed)
@@ -77,27 +81,35 @@ def plot_phenotypes(results, save_path=None):
             ax.set_title('Energy')
             ax.legend(fontsize=7)
 
-        # rolling policy probabilities
+        # stacked area policy probabilities
         ax = axes[row, 2]
         win = 15
+        pi_smooth = np.zeros((T, N_ACTIONS))
         for a in range(N_ACTIONS):
-            rolling = np.convolve(h['pi'][:, a], np.ones(win) / win,
-                                  mode='same')
-            ax.plot(t, rolling, color=ACOL[a], lw=1.2,
-                    label=ACTION_NAMES[a] if row == 0 else None)
+            pi_smooth[:, a] = np.convolve(h['pi'][:, a],
+                                           np.ones(win) / win, mode='same')
+        rs = pi_smooth.sum(axis=1, keepdims=True)
+        pi_smooth = pi_smooth / np.maximum(rs, 1e-10)
+        stack_order = [RECALL, ABSTRACT, FUTURATE, FEEL, ENGAGE, DISSOCIATE]
+        bottom = np.zeros(T)
+        for a in stack_order:
+            ax.fill_between(t, bottom, bottom + pi_smooth[:, a],
+                            color=ACOL[a], alpha=0.85,
+                            label=ACTION_NAMES[a] if row == 0 else None)
+            bottom += pi_smooth[:, a]
         ax.set_ylim(0, 1)
         if row == 0:
             ax.set_title('Policy  $\\pi(a)$')
-            ax.legend(fontsize=7, ncol=2)
+            ax.legend(fontsize=6, ncol=2, loc='upper right')
 
-        # VFE + J-C valence (both smoothed)
+        # VFE + composite valence (both smoothed)
         ax = axes[row, 3]
         ax.plot(t, _ema(h['vfe'], 0.05), color=c, alpha=0.5, lw=0.8,
                 label='VFE')
         ax2 = ax.twinx()
-        ax2.plot(t, _ema(h['valence_jc'], 0.05), color=c, lw=1.5,
-                 ls='--', label='Valence (J-C)')
-        ax2.set_ylim(-1.1, 1.1)
+        ax2.plot(t, _ema(h['valence'], 0.05), color=c, lw=1.5,
+                 ls='--', label='Composite $V$')
+        ax2.set_ylim(-0.5, 0.5)
         ax2.axhline(0, color='gray', lw=0.5, ls=':')
         if row == 0:
             ax.set_title('VFE  &  Valence')
