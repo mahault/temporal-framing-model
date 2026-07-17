@@ -297,3 +297,35 @@ ESM = beat.
 3. **Mechanism probes:** note explicitly that asymmetry and counterfactual depth
    are not testable by passive ESM valence prediction (probe–mechanism mismatch),
    motivating future choice-based tasks.
+
+## 2a-bis. Direct temporal-orientation test + model revision (2026-07-17)
+
+**Dataset:** Mulholland et al. 2023, Consciousness & Cognition (Mendeley
+10.17632/zpmm72bg6s.1, CC BY-NC). N=101, 1,458 per-probe mDES rows with per-beep
+past/future thought intensity + valence. `temporal_orientation_test.py`.
+
+**Findings (current model):**
+- RECALL/rumination branch VALIDATED: reported past-orientation ~ valence
+  r=-0.224 pooled, -0.234 within-person. Interaction with trait positivity (pi_pos
+  proxy) directionally correct (b=+0.06) but weak; low-mood past-slope -0.224,
+  high-mood -0.144 -> attenuation, NOT sign-flip.
+- FUTURATE default optimism NOT supported: future-orientation ~ valence r=-0.065
+  (mildly negative in unselected sample).
+- Frame INVERSION fails: model's latent frame belief driven on valence does NOT
+  recover reported orientation (r~=0). Filtered and predicted frame both null.
+  Orientation is exogenous context the model isn't given; validated claim is
+  frame->affect COUPLING, not affect->frame recovery.
+
+**Model revision (committed):** precision-gate FUTURATE and ABSTRACT symmetrically
+with RECALL (v_fut = 0.2 + 0.6*alpha). Motivated by future-negative finding.
+
+**Effect (held out, branch merged to master):**
+- Rutledge subsumption unchanged (0.144).
+- ESM full model ~unchanged: Geschwind 0.194/0.300/0.168, osf_83cfk 0.485/0.374/0.317.
+- ESM NO-INERTIA ablation greatly improved (model's own forward dynamics now carry
+  multi-step, not persistence): Geschwind h1/h2 0.14/0.29 (was 0.13/0.007),
+  osf h1/h2 0.46/0.34 (was 0.45/0.107). This retires the "multi-step leans on
+  persistence" caveat.
+- PAD circumplex still 10/10; anger/fear dominance split preserved.
+- Clinical numbers shifted: RECALL 29%->26%; chronic-stress future 0.77->0.66,
+  present 0.17->0.25 (paper updated, figures regenerated).

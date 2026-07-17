@@ -309,8 +309,11 @@ $\pi_{\text{pos}}$ a negative one (rumination). It is the computational realisat
 \item[ENGAGE] assigns $75\%$ to \textsc{present}, maintaining precision on current
 sensory input through perception--action coupling.
 \item[FUTURATE] assigns $90\%$ to \textsc{future} (narrative inertia); $\mathbf
-B_v^{\textsc{futurate}}$ pulls valence toward the solution state, imagining the best
-outcome. Its energy cost brakes it into short reactive planning bursts.
+B_v^{\textsc{futurate}}$ pulls valence toward a \emph{precision-gated} target
+$v_{\text{fut}}=0.2+0.6\alpha$, symmetric with RECALL, so high positive-belief
+precision yields hopeful prospection and low precision yields anxious, worry-type
+prospection rather than fixed optimism. Its energy cost brakes it into short reactive
+planning bursts.
 \item[FEEL] releases frame commitment ($50$--$60\%$ present) and models active
 interoceptive processing, reducing accumulated prediction error through body-state
 monitoring \citep{stephan2016allostatic}.
@@ -484,7 +487,7 @@ constrained by feedback. When $\pi_{\text{pos}}$ is low, RECALL fails at two cou
 levels: the mechanism itself is impaired ($\alpha\!\approx\!0.14$, barely pulling
 toward the prior) and its deployment is suppressed (it becomes EFE-uncompetitive).
 Figure~\ref{fig:feedback} contrasts a healthy and a recall-impaired agent differing
-only in $\pi_{\text{pos}}$: RECALL utilisation collapses from $29\%$ to $<1\%$, with
+only in $\pi_{\text{pos}}$: RECALL utilisation collapses from $26\%$ to $<1\%$, with
 compensatory ABSTRACT, FEEL, ENGAGE, and FUTURATE. This is the computational form of
 overgeneral memory \citep{williams2007autobiographical}: cognition migrates to
 representations that are abstract without being self-congruent.
@@ -505,7 +508,7 @@ monotonic in healthy/high-sensitivity profiles.}
 \centering
 \includegraphics[width=\textwidth]{figures/fig10_feedback_reliance.png}
 \caption{\textbf{Feedback reliance under recall impairment.} Profiles share all
-parameters except $\pi_{\text{pos}}$ (5.0 vs 0.2). (a) RECALL drops from $29\%$ to
+parameters except $\pi_{\text{pos}}$ (5.0 vs 0.2). (a) RECALL drops from $26\%$ to
 $<1\%$, with compensatory ABSTRACT/FEEL/ENGAGE/FUTURATE. (b) Valence trajectories
 lower under impairment. (c) Policy entropy: the impaired agent is less decisive.}
 \label{fig:feedback}
@@ -516,8 +519,8 @@ Chronic stress realises the double bind of \S\ref{sec:regulator}. Affect turns
 negative but construal stays coarse, so neither pathway to policy selection delivers.
 A stressed profile (very high volatility, amplified reward sensitivity, stress-impaired
 interoception, reduced $\pi_{\text{pos}}$) shows future-dominated fixation, dominant
-\textsc{future} frame belief ($0.77$ vs $0.25$ healthy), depleted \textsc{present}
-($0.17$ vs $0.50$), FUTURATE dominance, and strongly negative reward valence from
+\textsc{future} frame belief ($0.66$ vs $0.32$ healthy), depleted \textsc{present}
+($0.25$ vs $0.46$), FUTURATE dominance, and strongly negative reward valence from
 \emph{frustrated forward projection}: FUTURATE creates precise positive predictions
 that a volatile world falsifies (Figure~\ref{fig:stress}). At the mood timescale, the
 M5 layer turns this into an attractor. Two agents with identical healthy initial
@@ -591,6 +594,7 @@ Dataset & $N$ & Signals & Access & Supports \\
 Rutledge GBE happiness \citep{rutledge2014} & 47{,}067 (14{,}803) & gamble choices; momentary happiness & CC0 (Dryad) & subsumption / affect readout \\
 Geschwind--Bringmann ESM \citep{bringmann2013,geschwind2011} & 130 (129) & momentary affect; event pleasantness; worry & CC BY-NC & affect-dynamics; frame-to-worry \\
 Reliability ESM (\texttt{osf.io/83cfk}) & 91 & momentary affect (12 emotion sliders) & open (OSF) & affect-dynamics replication \\
+Temporal-orientation ESM \citep{mulholland2023} & 101 & per-probe past/future thought; valence & CC BY-NC & direct frame-to-affect coupling \\
 Sugawara \& Katahira (complete feedback) & 143 & choices; obtained + foregone outcomes & open (OSF) & counterfactual signature \\
 Palminteri 2017 (complete feedback) & 20 & choices; obtained + foregone outcomes & open (OSF) & counterfactual replication \\
 Reward+punishment reversal (osf.io/2gq96) & 128 (64/64) & learning rates by valence & open (OSF) & general precision deficit \\
@@ -708,13 +712,16 @@ more volatile affect is where the model helps most.
 Component ablations locate the source of the advantage. Driving the model on valence
 alone in the clinical sample changes almost nothing ($R^2=0.20$ at one step), so the
 gain is not the event channel acting as a hidden regressor. Removing the
-persistence-like valence-inertia term costs multi-step accuracy on both samples but
-leaves a clear one-step advantage in the clinical sample ($0.13$ versus $0.09$
-baseline), so the one-step gain there reflects structured affect dynamics beyond
-persistence, while the multi-step margins on the reliability sample lean on
-persistence. We do not claim a head-to-head reimplementation of each predecessor here;
-the claim is that the integrated model outpredicts standard baselines where affect
-carries non-trivial dynamics, and single components are insufficient.
+persistence-like valence-inertia term leaves the advantage largely intact at every
+horizon: on the clinical sample the model still reaches $R^2=0.14$ at one step and
+$0.29$ at two steps with no inertia at all (versus baselines $0.09$ and $0.27$), and on
+the reliability sample $0.46$ and $0.34$ (versus $0.48$ and $0.34$). The model's own
+forward dynamics, not a persistence prior, carry the multi-step prediction. This holds
+because the precision-gated prospection operator (\S\ref{sec:model}) keeps forward
+rollouts calibrated to the agent's actual affective level rather than drifting toward a
+fixed optimistic target. We do not claim a head-to-head reimplementation of each
+predecessor here; the claim is that the integrated model outpredicts standard baselines
+where affect carries non-trivial dynamics, and single components are insufficient.
 
 \begin{table}[htbp]
 \centering\small
@@ -729,18 +736,42 @@ valence alone there.}
 Sample & Predictor & 1 step & 2 steps & 3 steps \\
 \midrule
 Remitted-depression ($n{=}129$) & baseline & 0.089 & 0.274 & 0.097 \\
-\citep{bringmann2013,geschwind2011} & \textbf{full model} & \textbf{0.193} & \textbf{0.302} & \textbf{0.170} \\
+\citep{bringmann2013,geschwind2011} & \textbf{full model} & \textbf{0.194} & \textbf{0.300} & \textbf{0.168} \\
 \midrule
 Reliability ($n{=}91$) & baseline & 0.475 & 0.338 & 0.276 \\
-(\texttt{osf.io/83cfk}) & \textbf{full model} & \textbf{0.486} & \textbf{0.377} & \textbf{0.322} \\
+(\texttt{osf.io/83cfk}) & \textbf{full model} & \textbf{0.485} & \textbf{0.374} & \textbf{0.317} \\
 \bottomrule
 \end{tabular}
 \end{table}
 
 \subsection{Non-circular latent-state validation}
 Driven only by valence and event inputs, the model's posterior \emph{future-frame}
-belief tracks an independently measured worry item it is never shown ($r=0.166$,
-$n=11{,}712$), a symptom-relevant latent state recovered without being supplied.
+belief covaries with an independently measured worry item it is never shown ($r=0.166$,
+$n=11{,}712$). We read this as evidence that the frame belief couples to a
+symptom-relevant affective signal, not that it recovers reported temporal orientation
+as such; the direct orientation test below makes that distinction concrete.
+
+\subsection{Direct temporal-orientation test}\label{sec:orientation}
+The strongest test of the temporal-frame construct uses a dataset that labels the
+orientation of thought itself. In an experience-sampling study with per-probe reports
+of past- and future-directed thought alongside momentary valence
+(\citealp{mulholland2023}; $n=101$, $1{,}458$ probes, CC BY-NC), the model's central
+structural prediction is borne out and one of its default assumptions is not. The
+prediction that past-framing carries negative valence under low positive-belief
+precision (the RECALL/rumination branch) holds directly and within person: reported
+past-orientation covaries negatively with momentary valence
+($r=-0.23$ within person), and the effect attenuates for people with higher trait
+positivity ($\beta_{\text{past}\times\text{trait}}=+0.06$), the direction the
+precision-gated coupling predicts. The default that \emph{future}-framing is optimistic
+is not supported: future-orientation is mildly negative in this unselected sample
+($r=-0.07$), which is what motivated the precision-gated FUTURATE operator of
+\S\ref{sec:model} (worry-type prospection under low precision) in place of fixed
+optimism. Two honest limits. The gating attenuates but does not reverse the negativity
+of past-framing, so the strong ``rumination flips to positive narrative
+stabilisation'' reading is an overstatement of a real but weaker effect. And the
+model's latent frame, driven on affect alone, does not \emph{recover} reported
+orientation ($r\!\approx\!0$): orientation is exogenous context the model is not given,
+so the validated claim is a frame-to-affect coupling, not affect-to-frame inversion.
 
 \subsection{Emotion-space calibration (circumplex)}
 As a calibration check that the generative model spans affective space, we placed ten
@@ -856,9 +887,13 @@ categorical, not yet a continuous depth; the E-vector is fixed and not yet learn
 co-regulation \citep{hinrichs2025temporal} left to future work. Empirically, the
 per-channel head-to-head is on one dataset (Rutledge) and awaits replication; the
 affect-dynamics advantage replicates across two ESM samples but with sample-dependent
-margins, and its multi-step component leans on valence persistence; a direct
-temporal-orientation experience-sampling dataset with per-beep past/present/future
-labels remains the most valuable missing test of the framework's core mechanism.
+margins. The direct temporal-orientation test (\S\ref{sec:orientation}) validates the
+frame-to-affect coupling but also shows its two current limits: the model does not
+invert reported orientation from affect alone (it is not given orientation-carrying
+input), and precision gating attenuates rather than reverses the negativity of
+past-framing. Grounding the frame in an orientation-carrying observation channel, so
+the latent frame can be tested for recovery and not only coupling, is the most valuable
+next step.
 
 \bibliographystyle{plainnat}
 \bibliography{references}
