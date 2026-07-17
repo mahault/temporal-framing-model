@@ -31,6 +31,12 @@ alpha = sigma(pi_pos - 2). High pi_pos -> positive past (narrative stabilisation
 low pi_pos -> negative past (rumination). Pull strength is also gated by alpha,
 so rumination is weak at low pi_pos (EFE-optimal agents rarely RECALL when
 depressive; habitual rumination requires an E vector, noted as future work).
+
+FUTURATE and ABSTRACT are now precision-gated symmetrically with RECALL (both
+use the same alpha): future-framing is hopeful under high pi_pos and anxious
+(worry-type) under low pi_pos, rather than fixed-optimistic. Motivated by the
+Mulholland 2023 temporal-orientation data, where future-framing is affectively
+negative by default in an unselected sample.
 """
 
 import numpy as np
@@ -272,7 +278,16 @@ def B_valence(K, action, pi_pos, valence_inertia=0.0):
             B[:, v] = _gaussian_col(K, v, 3.0)
 
         elif action == FUTURATE:
-            solution = _gaussian_col(K, K - 1, 2.5)
+            # Precision-gated FUTURATE (symmetric with RECALL): the affective
+            # target of prospection depends on positive-belief precision.
+            #   High pi_pos: alpha~1 -> hopeful future (optimistic prospection)
+            #   Low pi_pos:  alpha~0.14 -> anxious future (worry-type prospection)
+            # Motivated by the Mulholland 2023 temporal-orientation data, where
+            # future-framing is affectively negative by default in an unselected
+            # sample (fixed-optimism FUTURATE is not supported).
+            futurate_valence = 0.2 + 0.6 * alpha_recall
+            target = (K - 1) * futurate_valence
+            solution = _gaussian_col(K, target, 2.5)
             stay = _gaussian_col(K, v, 3.0)
             B[:, v] = 0.5 * solution + 0.5 * stay
 
@@ -289,11 +304,11 @@ def B_valence(K, action, pi_pos, valence_inertia=0.0):
             B[:, v] = 0.9 * stay + 0.1 * neutral
 
         elif action == ABSTRACT:
-            # Moderate positive pull — "budget FUTURATE"
-            # Pulls toward ~70% max valence (vs FUTURATE's 100%)
-            # Tighter prediction than "coarse" would suggest — the agent
-            # BELIEVES abstract thinking will moderately improve valence
-            target_abstract = (K - 1) * 0.7
+            # "Budget FUTURATE": moderate, precision-gated pull, milder than
+            # FUTURATE. Gated by the same alpha so abstract prospection is
+            # hopeful under high self-belief and mildly negative under low.
+            abstract_valence = 0.35 + 0.45 * alpha_recall
+            target_abstract = (K - 1) * abstract_valence
             pull = _gaussian_col(K, target_abstract, 3.0)
             stay = _gaussian_col(K, v, 5.0)
             B[:, v] = 0.35 * stay + 0.65 * pull
