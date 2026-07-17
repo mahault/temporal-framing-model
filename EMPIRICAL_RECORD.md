@@ -329,3 +329,22 @@ with RECALL (v_fut = 0.2 + 0.6*alpha). Motivated by future-negative finding.
 - PAD circumplex still 10/10; anger/fear dominance split preserved.
 - Clinical numbers shifted: RECALL 29%->26%; chronic-stress future 0.77->0.66,
   present 0.17->0.25 (paper updated, figures regenerated).
+
+## 7. Integrity pass (2026-07-17): removed hand-tuned PAD figure
+
+The PAD/circumplex "emotion-space calibration" figure was REMOVED from the paper.
+Reason: the readout centering constants could not be justified. With a principled
+center (pleasure at the sigmoid knee pi_pos=2.0; arousal/dominance mean-centered) the
+ten profiles separate only 7/10 into correct quadrants; the previously-reported 10/10
+required pushing the pleasure center to 1.75 (below the knee, to move 'calm' across)
+and the arousal center to 10.5 (below the cross-profile mean 13.32, to fix
+'happy'/'alert'). It was hand-tuned to produce a clean result and is non-load-bearing,
+so it was cut rather than dressed with a disclaimer. `make_pad_figure.py` retained as a
+record of the check; `fig_pad_circumplex.png` no longer referenced.
+
+Also fixed in this pass: chronic-stress and mania descriptions attributed forward
+projection to FUTURATE, but on the (precision-gated) model ABSTRACT is the dominant
+forward operator (stressed 79% ABSTRACT, FUTURATE ~2%); FUTURATE is a rare high-cost
+action (~0-2% across phenotypes) by design. Paper + fig11 panel (f) updated to
+forward-framing = FUTURATE+ABSTRACT. Added real citations for Sugawara & Katahira 2021
+and Palminteri et al. 2017; corrected two Mulholland author first names.

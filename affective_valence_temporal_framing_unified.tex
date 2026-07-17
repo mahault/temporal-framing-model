@@ -132,7 +132,11 @@ path to a distant goal cannot be specified in advance, and filling in that far-o
 detail tends to provoke anxiety rather than yield mastery. On the broaden-and-build
 account \citep{fredrickson2001}, positive affect widens the field of available thought and action and is less
 action-specific than negative affect, so future aiming is supported by beliefs that
-orient without specifying the future in full.
+orient without specifying the future in full. Optimism here is the healthy,
+high-precision setting rather than a universal default: under low positive-belief
+precision the same forward machinery yields anxious rather than hopeful prospection, a
+contingency we make explicit in the model (\S\ref{sec:model}) and test directly
+(\S\ref{sec:orientation}).
 
 \subsection{Two logics of action and the identity pole}
 Decision theory distinguishes two families of action selection \citep{march1994}. On
@@ -190,9 +194,9 @@ This double bind is the computational core of the chronic-stress pathology of
 \S\ref{sec:dynamics}. The remainder of the paper gives the depth regulator a formal
 treatment in the language of free energy. In the model that follows, its continuous
 depth is discretized into a three-valued temporal-frame factor and six framing actions
-that redistribute precision over it. We treat the discretization as a deliberate
-simplification, flagged again in the limitations, and not as a claim that regulated
-depth is intrinsically discrete.
+that redistribute precision over it. The discretization is a simplification, flagged
+again in the limitations, and does not assert that regulated depth is intrinsically
+discrete.
 
 \section{The temporal structure of free energy}\label{sec:free-energy}
 \subsection{Active inference and attention as precision}
@@ -488,7 +492,7 @@ levels: the mechanism itself is impaired ($\alpha\!\approx\!0.14$, barely pullin
 toward the prior) and its deployment is suppressed (it becomes EFE-uncompetitive).
 Figure~\ref{fig:feedback} contrasts a healthy and a recall-impaired agent differing
 only in $\pi_{\text{pos}}$: RECALL utilisation collapses from $26\%$ to $<1\%$, with
-compensatory ABSTRACT, FEEL, ENGAGE, and FUTURATE. This is the computational form of
+compensatory FEEL, ENGAGE, and ABSTRACT. This is the computational form of
 overgeneral memory \citep{williams2007autobiographical}: cognition migrates to
 representations that are abstract without being self-congruent.
 
@@ -496,11 +500,13 @@ representations that are abstract without being self-congruent.
 \centering
 \includegraphics[width=\textwidth]{figures/fig11_framing_dynamics.png}
 \caption{\textbf{Temporal framing dynamics.} (a) Future-frame belief over time per
-profile. (b) Mean VFE by selected action: FUTURATE favoured at higher-VFE timesteps.
-(c) Action run lengths: FUTURATE shorter than RECALL (reactive planning). (d) Action
-transition matrices: the RECALL-to-ENGAGE pipeline in healthy agents. (e) Post-action
-valence stability: RECALL lowest. (f) Binned VFE vs $\pi(\textsc{futurate})$:
-monotonic in healthy/high-sensitivity profiles.}
+profile. (b) Mean VFE conditioned on the selected action. (c) Action run lengths
+(ABSTRACT and DISSOCIATE longest in the manic profile). (d) Action transition matrices:
+the RECALL-to-ENGAGE pipeline in healthy agents. (e) Post-action valence stability:
+RECALL lowest. (f) Forward-framing tendency ($\pi(\textsc{futurate})+\pi(\textsc{abstract})$,
+the two future-pulling operators, of which ABSTRACT carries most of the mass) against
+within-profile VFE percentile. FUTURATE itself is a rare, high-cost reactive-planning
+burst; ABSTRACT is the low-cost operator that does most forward framing.}
 \label{fig:framing}
 \end{figure}
 
@@ -509,7 +515,7 @@ monotonic in healthy/high-sensitivity profiles.}
 \includegraphics[width=\textwidth]{figures/fig10_feedback_reliance.png}
 \caption{\textbf{Feedback reliance under recall impairment.} Profiles share all
 parameters except $\pi_{\text{pos}}$ (5.0 vs 0.2). (a) RECALL drops from $26\%$ to
-$<1\%$, with compensatory ABSTRACT/FEEL/ENGAGE/FUTURATE. (b) Valence trajectories
+$<1\%$, with compensatory FEEL/ENGAGE/ABSTRACT. (b) Valence trajectories
 lower under impairment. (c) Policy entropy: the impaired agent is less decisive.}
 \label{fig:feedback}
 \end{figure}
@@ -520,9 +526,11 @@ negative but construal stays coarse, so neither pathway to policy selection deli
 A stressed profile (very high volatility, amplified reward sensitivity, stress-impaired
 interoception, reduced $\pi_{\text{pos}}$) shows future-dominated fixation, dominant
 \textsc{future} frame belief ($0.66$ vs $0.32$ healthy), depleted \textsc{present}
-($0.25$ vs $0.46$), FUTURATE dominance, and strongly negative reward valence from
-\emph{frustrated forward projection}: FUTURATE creates precise positive predictions
-that a volatile world falsifies (Figure~\ref{fig:stress}). At the mood timescale, the
+($0.25$ vs $0.46$), forward-framing dominance (ABSTRACT, the low-cost prospection
+operator, taken on $79\%$ of steps), and strongly negative reward valence
+($-0.42$ vs $+0.10$ healthy) from \emph{frustrated forward projection}: abstract
+prospection commits to above-neutral predictions that a volatile world falsifies
+(Figure~\ref{fig:stress}). At the mood timescale, the
 M5 layer turns this into an attractor. Two agents with identical healthy initial
 conditions but different volatility diverge, one drifting to high $\pi_{\text{pos}}$
 and the other crashing below the sigmoid knee where RECALL collapses
@@ -571,7 +579,7 @@ predictive-fit improver.
 \centering
 \includegraphics[width=0.5\textwidth]{figures/fig_counterfactual_signature.png}
 \caption{\textbf{Counterfactual emotion drives behaviour.} People switch $\sim$1.8$\times$
-more after regret than relief (Sugawara \& Katahira, $n=143$), a signature a
+more after regret than relief (\citealp{sugawara2021dissociation}, $n=143$), a signature a
 factual model cannot generate. This validates the mechanism as the generator of
 regret/relief, independent of its (null) contribution to prediction.}
 \label{fig:cf}
@@ -595,8 +603,8 @@ Rutledge GBE happiness \citep{rutledge2014} & 47{,}067 (14{,}803) & gamble choic
 Geschwind--Bringmann ESM \citep{bringmann2013,geschwind2011} & 130 (129) & momentary affect; event pleasantness; worry & CC BY-NC & affect-dynamics; frame-to-worry \\
 Reliability ESM (\texttt{osf.io/83cfk}) & 91 & momentary affect (12 emotion sliders) & open (OSF) & affect-dynamics replication \\
 Temporal-orientation ESM \citep{mulholland2023} & 101 & per-probe past/future thought; valence & CC BY-NC & direct frame-to-affect coupling \\
-Sugawara \& Katahira (complete feedback) & 143 & choices; obtained + foregone outcomes & open (OSF) & counterfactual signature \\
-Palminteri 2017 (complete feedback) & 20 & choices; obtained + foregone outcomes & open (OSF) & counterfactual replication \\
+Sugawara \& Katahira \citep{sugawara2021dissociation} & 143 & choices; obtained + foregone outcomes & open (OSF) & counterfactual signature \\
+Palminteri et al.\ \citep{palminteri2017confirmation} & 20 & choices; obtained + foregone outcomes & open (OSF) & counterfactual replication \\
 Reward+punishment reversal (osf.io/2gq96) & 128 (64/64) & learning rates by valence & open (OSF) & general precision deficit \\
 Autobiographical-memory meta-analysis & 181 ES & AMT specificity by cue valence & recovered & RECALL/specificity direction \\
 Reward Positivity (MEG) \citep{pirrung2025} & 90 (52/38) & neural reward response & CC0 & reward reactivity ($c_{\text{pos}}$) \\
@@ -756,50 +764,22 @@ The strongest test of the temporal-frame construct uses a dataset that labels th
 orientation of thought itself. In an experience-sampling study with per-probe reports
 of past- and future-directed thought alongside momentary valence
 (\citealp{mulholland2023}; $n=101$, $1{,}458$ probes, CC BY-NC), the model's central
-structural prediction is borne out and one of its default assumptions is not. The
-prediction that past-framing carries negative valence under low positive-belief
-precision (the RECALL/rumination branch) holds directly and within person: reported
-past-orientation covaries negatively with momentary valence
-($r=-0.23$ within person), and the effect attenuates for people with higher trait
-positivity ($\beta_{\text{past}\times\text{trait}}=+0.06$), the direction the
-precision-gated coupling predicts. The default that \emph{future}-framing is optimistic
-is not supported: future-orientation is mildly negative in this unselected sample
-($r=-0.07$), which is what motivated the precision-gated FUTURATE operator of
-\S\ref{sec:model} (worry-type prospection under low precision) in place of fixed
-optimism. Two honest limits. The gating attenuates but does not reverse the negativity
-of past-framing, so the strong ``rumination flips to positive narrative
-stabilisation'' reading is an overstatement of a real but weaker effect. And the
-model's latent frame, driven on affect alone, does not \emph{recover} reported
-orientation ($r\!\approx\!0$): orientation is exogenous context the model is not given,
-so the validated claim is a frame-to-affect coupling, not affect-to-frame inversion.
-
-\subsection{Emotion-space calibration (circumplex)}
-As a calibration check that the generative model spans affective space, we placed ten
-profiles targeting regions of the Pleasure--Arousal circumplex
-\citep{russell1980circumplex,mehrabian1996pleasure} and read three principled
-quantities off each run: pleasure from positive-belief precision (how positively the
-agent construes its situation), arousal from mean expected free energy (expected
-demand), and dominance from policy precision (control). All ten fall in the correct
-circumplex quadrant (Figure~\ref{fig:pad}A), and dominance recovers the classic
-distinction between the two high-arousal negative states, anger (approach, high
-dominance) and fear (withdrawal, low dominance) (Figure~\ref{fig:pad}B). This is
-simulation calibration rather than external validation; the parameters were chosen to
-target the profiles. The pleasure--arousal plane separates cleanly, while dominance
-separates only the approach/withdrawal contrast. We therefore claim circumplex-quadrant
-recovery, not octant recovery.
-
-\begin{figure}[htbp]
-\centering
-\includegraphics[width=\textwidth]{figures/fig_pad_circumplex.png}
-\caption{\textbf{Circumplex calibration.} (A) Ten targeted profiles placed on the
-pleasure--arousal circumplex; every profile falls in its correct quadrant
-\citep{russell1980circumplex}. (B) Dominance (policy precision) splits the two
-high-arousal negative states, anger (high, approach) from fear (low, withdrawal).
-Pleasure is read from positive-belief precision, arousal from mean expected free
-energy, dominance from policy precision, each centred across profiles. Presented as
-calibration of expressive range.}
-\label{fig:pad}
-\end{figure}
+structural prediction holds and one of its default assumptions fails. The prediction
+that past-framing carries negative valence under low positive-belief precision (the
+RECALL/rumination branch) holds directly and within person: reported past-orientation
+covaries negatively with momentary valence ($r=-0.23$ within person), and the effect
+attenuates for people with higher trait positivity
+($\beta_{\text{past}\times\text{trait}}=+0.06$), the direction the precision-gated
+coupling predicts. The default that \emph{future}-framing is optimistic fails:
+future-orientation is mildly negative in this unselected sample ($r=-0.07$). This
+motivated the precision-gated FUTURATE operator of \S\ref{sec:model}, in which low
+precision yields worry-type prospection. Two limits remain. First, the gating softens
+the negativity of past-framing without reversing it, so the strong reading in which
+rumination flips into positive narrative stabilisation overstates a real but weaker
+effect. Second, driven on affect alone the model's latent frame does not \emph{recover}
+reported orientation ($r\!\approx\!0$), because orientation is exogenous context the
+model is never given; the validated claim is a frame-to-affect coupling, and testing
+affect-to-frame recovery would require an orientation-carrying input channel.
 
 \subsection{What does not improve prediction}
 Across every dataset we tested, experience-sampling affect, two complete-feedback
@@ -867,8 +847,8 @@ Health is not a particular temporal configuration but the \emph{capacity to tran
 between configurations. The healthy agent visits multiple framing modes with a high
 switching rate and short run lengths, metastability, in dynamical-systems terms.
 Pathology is stickiness. Amplified reward sensitivity with impaired interoception locks
-FUTURATE on via absorptive narrative inertia; a habit prior locks RECALL on while
-suppressing EFE-optimal escape. Restoring the ability to transition matters more than
+abstract forward framing on via absorptive narrative inertia; a habit prior locks RECALL
+on while suppressing EFE-optimal escape. Restoring the ability to transition matters more than
 correcting the balance between orientations.
 
 \subsection{Attention as precision, and mood/emotion timescales}
