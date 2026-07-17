@@ -386,17 +386,33 @@ def run_chronic_stress_experiment(T=300, seed=42):
     return results
 
 
-# ── Experiment 7: Stress decay (hierarchical M5 mood) ─────
+# ── Experiment 7: Diathesis-stress (hierarchical M5 mood) ─
+# 2x2 crossing vulnerability (diathesis) x chronic stress. Depression emerges
+# only from the CONJUNCTION (Monroe & Simons 1991): a healthy agent is resilient
+# even under chronic stress, and vulnerability alone is not sufficient; only the
+# vulnerable agent under stress falls into the low-mood (rumination) attractor.
+# Vulnerability = low positive-belief precision + blunted reward sensitivity
+# (anhedonia, c_scale) + weak interoception; stress = high environmental volatility.
 STRESS_DECAY_PROFILES = {
-    'healthy_stable': dict(
+    'healthy_calm': dict(
         K=8, M=8, pi_pos=5.0, omega_e=5.0, gamma=16.0, c_scale=1.0,
         volatility=0.3,
-        desc='Baseline: stable environment, healthy parameters',
+        desc='Resilient baseline: healthy parameters, low-stress environment',
     ),
-    'healthy_under_stress': dict(
+    'healthy_stress': dict(
         K=8, M=8, pi_pos=5.0, omega_e=5.0, gamma=16.0, c_scale=1.0,
         volatility=0.9,
-        desc='Chronic stress: same agent, high-volatility environment',
+        desc='Stress alone: healthy agent, high-volatility environment (resilient)',
+    ),
+    'vulnerable_calm': dict(
+        K=8, M=8, pi_pos=1.0, omega_e=1.5, gamma=16.0, c_scale=0.25,
+        volatility=0.3,
+        desc='Vulnerability alone: low precision + anhedonia, low-stress (mostly ok)',
+    ),
+    'vulnerable_stress': dict(
+        K=8, M=8, pi_pos=1.0, omega_e=1.5, gamma=16.0, c_scale=0.25,
+        volatility=0.9,
+        desc='Diathesis + stress: vulnerable agent under chronic stress (depression)',
     ),
 }
 

@@ -348,3 +348,39 @@ forward operator (stressed 79% ABSTRACT, FUTURATE ~2%); FUTURATE is a rare high-
 action (~0-2% across phenotypes) by design. Paper + fig11 panel (f) updated to
 forward-framing = FUTURATE+ABSTRACT. Added real citations for Sugawara & Katahira 2021
 and Palminteri et al. 2017; corrected two Mulholland author first names.
+
+## 8. Mood-layer bug fix: valence-based mood -> robust diathesis-stress (2026-07-17)
+
+**Bug (found during phenotype scrutiny):** the M5 mood layer observed mean VFE.
+VFE is (a) nearly flat across pi_pos (range 0.17) and (b) adapts away under chronic
+stress (stressed mean VFE 4.76 vs stable 4.69) -- a well-adapted depressed agent has
+NORMAL VFE. So VFE structurally cannot detect depression; the mood did a sticky random
+walk -> stochastic basin coin-flip. The old "emergent depression under chronic stress"
+claim was contradicted across seeds (stressed ended lower pi_pos 0/10; higher 6/10),
+on BOTH the old fixed-optimism and current models (not caused by the FUTURATE gating).
+
+**Fix (agent.py):** the mood observes believed-valence LEVEL, not VFE -- the one
+signal that stays low in depression (Beck's negative schema; Eldar & Niv 2016
+mood-as-reward-level). Likelihood anchors neutral valence (0.5) to the sigmoid knee
+(pi_pos=2, the rumination threshold); slope spreads the observed valence range across
+the pi_pos axis. Above-neutral valence -> high pi_pos (resilience); persistently
+below-neutral -> below the knee, where RECALL rumination sustains a low-mood attractor.
+
+**Result -- robust diathesis-stress (Monroe & Simons 1991), 8 seeds, T=1500:**
+| condition | final pi_pos | depressed(<2) |
+|---|---|---|
+| healthy + calm | 7.43 +/- 0.02 | 0/8 |
+| healthy + stress | 5.16 +/- 0.69 | 0/8 (resilient -- stress alone insufficient) |
+| vulnerable + calm | 4.22 +/- 1.04 | 0/8 (vulnerability alone insufficient) |
+| vulnerable + stress | 0.76 +/- 0.17 | 8/8 (self-sustaining depressive collapse) |
+
+Only the conjunction produces depression. Vulnerability = low pi_pos + blunted reward
+sensitivity (c_scale, anhedonia) + weak interoception; stress = high volatility.
+
+**Verified the fix breaks nothing:** ESM Geschwind 0.194/0.301/0.171 & osf
+0.485/0.375/0.319 (unchanged); Rutledge head-to-head 0.144 (unchanged); Mulholland
+orientation r=-0.234 (data-side); feedback-reliance RECALL 26%->0% (unchanged);
+phenotypes distinct. Shifted (chronic-stress DEMO, seed 42): stressed future-frame
+0.66->0.57, present 0.25->0.32, reward valence -0.42->-0.35, ABSTRACT 79%->66%
+(qualitative story unchanged). Experiment redesigned as a 2x2 diathesis-stress;
+fig14 rebuilt (STRESS_DECAY_PROFILES, plot_stress_decay).

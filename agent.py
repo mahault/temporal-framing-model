@@ -85,6 +85,7 @@ class Agent:
         self.B_mood = build_B_mood()
         self.mood_beliefs = build_D_mood(pi_pos)
         self._vfe_buffer = []
+        self._val_buffer = []           # believed-valence level (mood evidence)
         self._step_count = 0
         self._mood_calibrated = False   # online offset not yet applied
 
@@ -115,6 +116,7 @@ class Agent:
         self.pi_pos = self._initial_pi_pos
         self.mood_beliefs = build_D_mood(self._initial_pi_pos)
         self._vfe_buffer = []
+        self._val_buffer = []
         self._step_count = 0
         self._intero_vfe_ema = 0.0
         self._vfe_ema = None
@@ -190,6 +192,12 @@ class Agent:
 
         # ── M5 mood layer: hierarchical Bayesian inference ──
         self._vfe_buffer.append(float(vfe))
+        # Believed-valence level (0..1): the mood evidence. Unlike VFE (which
+        # adapts away) valence level stays low in depression, so it is what lets
+        # chronic stress accumulate into a persistent low-mood state.
+        K_ = self.model.K
+        v_lvl = q_post.reshape(K_, self.model.M, 3).sum(axis=(1, 2))
+        self._val_buffer.append(float(v_lvl @ np.arange(K_) / max(K_ - 1, 1)))
         self._step_count += 1
         if self._step_count % self.T_mood == 0 and \
                 len(self._vfe_buffer) >= self.T_mood:
@@ -332,30 +340,29 @@ class Agent:
         On the first mood window, an online offset correction aligns
         the analytical VFE curve with the agent's actual VFE.
         """
-        window = self._vfe_buffer[-self.T_mood:]
-        mean_vm = float(np.mean(window))
-
-        # Online calibration: shift analytical curve to match observed VFE
-        if not self._mood_calibrated:
-            analytical_at_current = float(np.interp(
-                self.pi_pos, MOOD_BIN_CENTERS, self._vfe_curve))
-            vfe_offset = mean_vm - analytical_at_current
-            calibrated_curve = self._vfe_curve + vfe_offset
-            self.A_mood, self._mood_obs_edges = _build_A_mood_from_vfe(
-                calibrated_curve)
-            self._mood_calibrated = True
-
-        # Bin the observation
-        o_mood = int(np.digitize(mean_vm, self._mood_obs_edges[1:-1]))
-        o_mood = min(o_mood, N_OBS_MOOD - 1)
+        mean_val = float(np.mean(self._val_buffer[-self.T_mood:]))
 
         # Predict (slow mood transition)
         q_pred = self.B_mood @ self.mood_beliefs
         q_pred = np.maximum(q_pred, EPS)
         q_pred /= q_pred.sum()
 
-        # Update (Bayesian)
-        lik = self.A_mood[o_mood, :]
+        # Update (Bayesian): the mood infers pi_pos from believed-valence level,
+        # relative to neutral (0.5). Above neutral -> high pi_pos; below -> low.
+        # Each pi_pos bin predicts a valence level spanning the plausible range,
+        # so persistently low valence (chronic stress / anhedonia) drives the
+        # posterior toward low pi_pos, which in turn biases RECALL/FUTURATE toward
+        # negative targets -> a self-sustaining low-mood attractor (Beck's schema;
+        # Eldar & Niv 2016 mood-as-reward-level).
+        # The mood infers pi_pos from believed-valence level. Anchor: neutral
+        # valence (0.5) corresponds to the sigmoid knee (pi_pos = 2), the point
+        # below which RECALL turns to rumination; the slope spreads the observed
+        # valence range across the pi_pos axis. So above-neutral valence -> high
+        # pi_pos (resilience), and persistently below-neutral valence (chronic
+        # stress in a vulnerable agent) -> pi_pos below the knee, where rumination
+        # sustains a low-mood attractor (Beck's schema; Eldar & Niv 2016).
+        pred_val = np.clip(0.5 + 0.02 * (MOOD_BIN_CENTERS - 2.0), 0.05, 0.95)
+        lik = np.exp(-0.5 * ((mean_val - pred_val) / 0.06) ** 2)
         q_post = lik * q_pred
         q_post = np.maximum(q_post, EPS)
         q_post /= q_post.sum()
@@ -367,8 +374,9 @@ class Agent:
         # Rebuild lower-level B matrices with updated pi_pos
         self._rebuild_B()
 
-        # Clear buffer for next cycle
+        # Clear buffers for next cycle
         self._vfe_buffer = []
+        self._val_buffer = []
 
     # ── Rebuild B matrices with current pi_pos ─────────────
     def _rebuild_B(self):
