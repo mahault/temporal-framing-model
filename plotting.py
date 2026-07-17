@@ -1036,7 +1036,9 @@ def plot_framing_dynamics(results, save_path=None):
     ax.set_title('(e) Post-Action Valence Stability')
     ax.legend(fontsize=8)
 
-    # ── (f) VFE–FUTURATE correlation (Gap B) ─────────────
+    # ── (f) VFE vs forward-framing tendency (Gap B) ──────
+    # Forward framing = FUTURATE + ABSTRACT (ABSTRACT is the low-cost prospection
+    # operator that carries most forward framing; FUTURATE is a rare high-cost burst).
     ax = axes[1, 2]
     # Use within-phenotype VFE percentile bins so all lines span [0,100]
     n_bins = 8
@@ -1045,8 +1047,8 @@ def plot_framing_dynamics(results, save_path=None):
     for name in names:
         h = results[name]
         vfe = h['vfe']
-        p_fut = h['pi'][:, FUTURATE]
-        bin_p_fut = np.zeros(n_bins)
+        p_fwd = h['pi'][:, FUTURATE] + h['pi'][:, ABSTRACT]
+        bin_p_fwd = np.zeros(n_bins)
         edges = np.percentile(vfe, pct_edges)
         for b in range(n_bins):
             if b == n_bins - 1:
@@ -1054,13 +1056,13 @@ def plot_framing_dynamics(results, save_path=None):
             else:
                 mask = (vfe >= edges[b]) & (vfe < edges[b + 1])
             if np.sum(mask) > 0:
-                bin_p_fut[b] = np.mean(p_fut[mask])
-        ax.plot(pct_centers, bin_p_fut, 'o-', color=PCOL[name], lw=1.5,
+                bin_p_fwd[b] = np.mean(p_fwd[mask])
+        ax.plot(pct_centers, bin_p_fwd, 'o-', color=PCOL[name], lw=1.5,
                 ms=5, label=name.capitalize())
 
     ax.set_xlabel('VFE percentile (within phenotype)')
-    ax.set_ylabel('$\\pi(\\mathrm{FUTURATE})$')
-    ax.set_title('(f) VFE–FUTURATE Correlation')
+    ax.set_ylabel('$\\pi(\\mathrm{FUTURATE}) + \\pi(\\mathrm{ABSTRACT})$')
+    ax.set_title('(f) VFE vs forward-framing tendency')
     ax.legend(fontsize=8)
 
     fig.suptitle('Temporal Framing Dynamics', fontsize=14, y=1.01)
