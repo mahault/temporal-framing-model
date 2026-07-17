@@ -36,8 +36,14 @@ class Agent:
                  omega_e: float = 5.0, c_scale: float = 1.0,
                  c_pos: float = None, c_neg: float = None,
                  neg_val_precision: float = 1.0,
+                 valence_inertia: float = 0.0,
                  habit_E: np.ndarray = None,
+                 affect_precision_gain: float = 0.5,
                  learn_B_frame: bool = False, frame_concentration: float = 50.0,
+                 counterfactual_horizon: int = 2,
+                 counterfactual_discount: float = 0.75,
+                 adaptive_counterfactual_horizon: bool = False,
+                 max_counterfactual_horizon: int = 4,
                  seed: int = 0):
         self.model = model
         self.gamma = gamma
@@ -46,6 +52,7 @@ class Agent:
         self.tau_reward = tau_reward
         self.tau_action = tau_action
         self.beliefs = model.D.copy()
+        self.valence_inertia = float(valence_inertia)
         self.prev_action = None
         self._vfe_prev = None
         # E vector: log-prior over policies (habit prior, Da Costa et al. 2020)
@@ -53,6 +60,18 @@ class Agent:
         # None → uniform prior (no habit bias), backward compatible
         self._habit_E = habit_E
         self._pi_prev = None    # previous policy for affective charge
+        self._v_action_prev = 0.0
+        self.affect_precision_gain = float(affect_precision_gain)
+        self.counterfactual_horizon = max(1, int(counterfactual_horizon))
+        self.counterfactual_discount = float(counterfactual_discount)
+        self.adaptive_counterfactual_horizon = bool(adaptive_counterfactual_horizon)
+        self.max_counterfactual_horizon = max(
+            self.counterfactual_horizon, int(max_counterfactual_horizon)
+        )
+        self._vfe_ema = None
+        self._vfe_var_ema = None
+        self._vfe_alpha = 0.05
+        self._last_counterfactual_horizon = self.counterfactual_horizon
 
         # ── M5 mood layer: per-model calibrated POMDP over pi_pos ──
         self.pi_pos = float(pi_pos)
@@ -92,11 +111,15 @@ class Agent:
         self.prev_action = None
         self._vfe_prev = None
         self._pi_prev = None
+        self._v_action_prev = 0.0
         self.pi_pos = self._initial_pi_pos
         self.mood_beliefs = build_D_mood(self._initial_pi_pos)
         self._vfe_buffer = []
         self._step_count = 0
         self._intero_vfe_ema = 0.0
+        self._vfe_ema = None
+        self._vfe_var_ema = None
+        self._last_counterfactual_horizon = self.counterfactual_horizon
         # Reset mood calibration (re-use stored analytical curve)
         self._mood_calibrated = False
         self.A_mood, self._mood_obs_edges = _build_A_mood_from_vfe(self._vfe_curve)
@@ -149,6 +172,7 @@ class Agent:
         else:
             dF = 0.0
         self._vfe_prev = vfe
+        self._update_vfe_scale(float(vfe))
 
         # ── Interoceptive surprise tracking (Stephan et al. 2016) ──
         # Accuracy on the o_int modality (index 1) = interoceptive channel
@@ -200,9 +224,18 @@ class Agent:
         arousal_norm = arousal_p / max_H if max_H > 0 else 0.0
 
         # ── EFE & policy selection ─────────────────────────
-        G = np.array([self._efe(a) for a in range(N_ACTIONS)])
+        # Counterfactual EFE: evaluate each action by rolling the generative
+        # model forward over short roads-not-taken.
+        rollout_horizon = self._current_counterfactual_horizon(float(vfe))
+        self._last_counterfactual_horizon = rollout_horizon
+        G = np.array([self._efe_rollout(a, rollout_horizon)
+                      for a in range(N_ACTIONS)])
+        G_one_step = np.array([self._efe(a) for a in range(N_ACTIONS)])
 
-        log_pi = -self.gamma * G
+        gamma_eff = self.gamma * np.exp(
+            np.clip(self.affect_precision_gain * self._v_action_prev, -1.0, 1.0)
+        )
+        log_pi = -gamma_eff * G
         if self._habit_E is not None:
             log_pi = log_pi + self._habit_E
         log_pi -= log_pi.max()
@@ -222,8 +255,10 @@ class Agent:
         valence = float(np.tanh(v_model + v_reward + v_action))
 
         action = int(self.rng.choice(N_ACTIONS, p=pi))
+        counterfactual_regret = float(G[action] - np.min(G))
         self.prev_action = action
         self._pi_prev = pi.copy()
+        self._v_action_prev = v_action
 
         # Policy entropy (decision uncertainty)
         pi_safe = np.maximum(pi, EPS)
@@ -235,7 +270,11 @@ class Agent:
             beliefs=q_post.copy(),
             q_pred=q_pred.copy(),
             G=G.copy(),
+            G_one_step=G_one_step.copy(),
             pi=pi.copy(),
+            counterfactual_regret=counterfactual_regret,
+            counterfactual_horizon=float(rollout_horizon),
+            gamma_eff=float(gamma_eff),
             # Three-channel valence (all tanh-bounded to [-1, 1])
             v_model=v_model,
             v_reward=v_reward,
@@ -258,6 +297,27 @@ class Agent:
             mood_beliefs=self.mood_beliefs.copy(),
         )
         return action, info
+
+    def _update_vfe_scale(self, vfe):
+        if self._vfe_ema is None:
+            self._vfe_ema = vfe
+            self._vfe_var_ema = 0.0
+            return
+        delta = vfe - self._vfe_ema
+        self._vfe_ema += self._vfe_alpha * delta
+        self._vfe_var_ema = (
+            (1.0 - self._vfe_alpha) * self._vfe_var_ema
+            + self._vfe_alpha * delta * delta
+        )
+
+    def _current_counterfactual_horizon(self, vfe):
+        if not self.adaptive_counterfactual_horizon:
+            return self.counterfactual_horizon
+        scale = np.sqrt(max(self._vfe_var_ema or 0.0, EPS))
+        z = (vfe - (self._vfe_ema if self._vfe_ema is not None else vfe)) / scale
+        extra = int(np.clip(np.ceil(max(0.0, z)), 0, self.max_counterfactual_horizon))
+        return int(min(self.max_counterfactual_horizon,
+                       self.counterfactual_horizon + extra))
 
     # ── M5 hierarchical mood update ─────────────────────────
     def _mood_update(self):
@@ -317,12 +377,18 @@ class Agent:
                 counts = self._bf_counts[a]
                 Bf = counts / (counts.sum(axis=0, keepdims=True) + EPS)
                 self.model.B[a] = rebuild_B_with_frame(
-                    self.model, a, self.pi_pos, Bf)
+                    self.model, a, self.pi_pos, Bf,
+                    valence_inertia=self.valence_inertia)
             else:
-                self.model.B[a] = rebuild_B_single(self.model, a, self.pi_pos)
+                self.model.B[a] = rebuild_B_single(
+                    self.model, a, self.pi_pos,
+                    valence_inertia=self.valence_inertia)
 
     # ── EFE for a single action ────────────────────────────
     def _efe(self, action):
+        return self._efe_from_belief(action, self.beliefs)
+
+    def _efe_one_step_legacy(self, action):
         """G(a) = Σ_m [ risk_m + ambiguity_m ]."""
         q_pred = self.model.B[action] @ self.beliefs
         q_pred = np.maximum(q_pred, EPS)
@@ -347,3 +413,61 @@ class Agent:
             G += risk + ambiguity
 
         return G
+
+    def _efe_from_belief(self, action, belief):
+        """G(a | q) = sum_m [risk_m + ambiguity_m] after one predicted step."""
+        q_pred = self.model.B[action] @ belief
+        q_pred = np.maximum(q_pred, EPS)
+        q_pred /= q_pred.sum()
+
+        G = 0.0
+        for m in range(len(self.model.A)):
+            Am = self.model.A[m]
+            Cm = self.model.C[m]
+
+            q_o = Am @ q_pred
+            q_o = np.maximum(q_o, EPS)
+            q_o /= q_o.sum()
+
+            p_pref = np.exp(Cm - Cm.max())
+            p_pref /= (p_pref.sum() + EPS)
+
+            risk = float(np.dot(q_o, np.log(q_o + EPS) - np.log(p_pref + EPS)))
+            H_cols = -np.sum(Am * np.log(Am + EPS), axis=0)
+            ambiguity = float(np.dot(q_pred, H_cols))
+
+            G += risk + ambiguity
+
+        return G
+
+    def _efe_rollout(self, action, horizon, belief=None):
+        """Counterfactual expected free energy over a short action rollout.
+
+        This implements bounded mental time travel: each candidate action
+        predicts the state it would lead to, then recursively evaluates the
+        expected cost of subsequent actions from that imagined state.
+        """
+        if belief is None:
+            belief = self.beliefs
+
+        immediate = self._efe_from_belief(action, belief)
+        if horizon <= 1:
+            return immediate
+
+        q_next = self.model.B[action] @ belief
+        q_next = np.maximum(q_next, EPS)
+        q_next /= q_next.sum()
+
+        future_G = np.array([
+            self._efe_rollout(a, horizon - 1, q_next)
+            for a in range(N_ACTIONS)
+        ])
+        log_pi = -self.gamma * future_G
+        if self._habit_E is not None:
+            log_pi = log_pi + self._habit_E
+        log_pi -= log_pi.max()
+        future_pi = np.exp(log_pi)
+        future_pi /= (future_pi.sum() + EPS)
+
+        return float(immediate + self.counterfactual_discount *
+                     np.dot(future_pi, future_G))

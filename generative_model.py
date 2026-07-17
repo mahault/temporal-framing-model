@@ -101,7 +101,8 @@ def _gaussian_col(n, center, precision):
 
 # ── Model builder ──────────────────────────────────────────
 def build_model(K=8, M=5, pi_pos=5.0, omega_e=5.0, gamma=16.0, c_scale=1.0,
-                c_pos=None, c_neg=None, neg_val_precision=1.0):
+                c_pos=None, c_neg=None, neg_val_precision=1.0,
+                valence_inertia=0.0):
     """
     Construct a full POMDP generative model.
 
@@ -125,7 +126,7 @@ def build_model(K=8, M=5, pi_pos=5.0, omega_e=5.0, gamma=16.0, c_scale=1.0,
     n_s = K * M * F
 
     A = _build_A(K, M, F, n_s, omega_e, neg_val_precision=neg_val_precision)
-    B = _build_B(K, M, F, n_s, pi_pos)
+    B = _build_B(K, M, F, n_s, pi_pos, valence_inertia=valence_inertia)
     C = _build_C(K, c_scale, c_pos=c_pos, c_neg=c_neg)
     D = _build_D(K, M, F, n_s, pi_pos)
 
@@ -213,10 +214,10 @@ def _build_A(K, M, F, n_s, omega_e, neg_val_precision=1.0):
 
 
 # ── B matrices (transitions) ──────────────────────────────
-def _build_B(K, M, F, n_s, pi_pos):
+def _build_B(K, M, F, n_s, pi_pos, valence_inertia=0.0):
     B = []
     for a in range(N_ACTIONS):
-        Bv = B_valence(K, a, pi_pos)
+        Bv = B_valence(K, a, pi_pos, valence_inertia=valence_inertia)
         Be = B_energy(M, a)
         Bf = B_frame(a)
         B_full = np.kron(Bv, np.kron(Be, Bf))
@@ -232,9 +233,9 @@ def recall_alpha(pi_pos):
     return 1.0 / (1.0 + np.exp(-(pi_pos - 2.0)))
 
 
-def rebuild_B_single(model, action, pi_pos):
+def rebuild_B_single(model, action, pi_pos, valence_inertia=0.0):
     """Rebuild one action's full B matrix with current pi_pos."""
-    Bv = B_valence(model.K, action, pi_pos)
+    Bv = B_valence(model.K, action, pi_pos, valence_inertia=valence_inertia)
     Be = B_energy(model.M, action)
     Bf = B_frame(action)
     B_full = np.kron(Bv, np.kron(Be, Bf))
@@ -242,16 +243,16 @@ def rebuild_B_single(model, action, pi_pos):
     return B_full
 
 
-def rebuild_B_with_frame(model, action, pi_pos, Bf_learned):
+def rebuild_B_with_frame(model, action, pi_pos, Bf_learned, valence_inertia=0.0):
     """Rebuild one action's B matrix with current pi_pos AND learned B_frame."""
-    Bv = B_valence(model.K, action, pi_pos)
+    Bv = B_valence(model.K, action, pi_pos, valence_inertia=valence_inertia)
     Be = B_energy(model.M, action)
     B_full = np.kron(Bv, np.kron(Be, Bf_learned))
     B_full /= (B_full.sum(axis=0, keepdims=True) + EPS)
     return B_full
 
 
-def B_valence(K, action, pi_pos):
+def B_valence(K, action, pi_pos, valence_inertia=0.0):
     """K x K valence transition matrix (cols = from, rows = to)."""
     B = np.zeros((K, K))
     alpha_recall = 1.0 / (1.0 + np.exp(-(pi_pos - 2.0)))  # sigmoid
@@ -297,6 +298,9 @@ def B_valence(K, action, pi_pos):
             stay = _gaussian_col(K, v, 5.0)
             B[:, v] = 0.35 * stay + 0.65 * pull
 
+    inertia = float(np.clip(valence_inertia, 0.0, 0.95))
+    if inertia > 0:
+        B = inertia * np.eye(K) + (1.0 - inertia) * B
     B /= (B.sum(axis=0, keepdims=True) + EPS)
     return B
 

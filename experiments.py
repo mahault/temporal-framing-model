@@ -43,9 +43,15 @@ PROFILES = {
 # ── Single trial ───────────────────────────────────────────
 def run_trial(K=8, M=5, pi_pos=5.0, omega_e=5.0, gamma=16.0, c_scale=1.0,
               c_pos=None, c_neg=None, neg_val_precision=1.0,
+              valence_inertia=0.0,
               habit_E=None,
+              affect_precision_gain=0.5,
               T=300, volatility=0.45, seed=42, T_mood=50,
-              learn_B_frame=False, frame_concentration=50.0, **_ignored):
+              learn_B_frame=False, frame_concentration=50.0,
+              counterfactual_horizon=2, counterfactual_discount=0.75,
+              adaptive_counterfactual_horizon=False,
+              max_counterfactual_horizon=4,
+              **_ignored):
     """
     Run one agent–environment trial.
 
@@ -54,14 +60,21 @@ def run_trial(K=8, M=5, pi_pos=5.0, omega_e=5.0, gamma=16.0, c_scale=1.0,
     model = build_model(K=K, M=M, pi_pos=pi_pos, omega_e=omega_e,
                         gamma=gamma, c_scale=c_scale,
                         c_pos=c_pos, c_neg=c_neg,
-                        neg_val_precision=neg_val_precision)
+                        neg_val_precision=neg_val_precision,
+                        valence_inertia=valence_inertia)
     agent = Agent(model, gamma=gamma, pi_pos=pi_pos, T_mood=T_mood,
                   omega_e=omega_e, c_scale=c_scale,
                   c_pos=c_pos, c_neg=c_neg,
                   neg_val_precision=neg_val_precision,
+                  valence_inertia=valence_inertia,
                   habit_E=habit_E,
+                  affect_precision_gain=affect_precision_gain,
                   learn_B_frame=learn_B_frame,
                   frame_concentration=frame_concentration,
+                  counterfactual_horizon=counterfactual_horizon,
+                  counterfactual_discount=counterfactual_discount,
+                  adaptive_counterfactual_horizon=adaptive_counterfactual_horizon,
+                  max_counterfactual_horizon=max_counterfactual_horizon,
                   seed=seed + 1)
     env = Environment(K=K, M=M, volatility=volatility, seed=seed,
                       pi_pos=pi_pos, c_scale=c_scale, c_pos=c_pos)
@@ -91,7 +104,11 @@ def run_trial(K=8, M=5, pi_pos=5.0, omega_e=5.0, gamma=16.0, c_scale=1.0,
         hist['dF'][t]      = info['dF']
         hist['valence_jc'][t] = info['valence_jc']
         hist['G'][t]       = info['G']
+        hist['G_one_step'][t] = info['G_one_step']
+        hist['counterfactual_regret'][t] = info['counterfactual_regret']
+        hist['counterfactual_horizon'][t] = info['counterfactual_horizon']
         hist['pi'][t]      = info['pi']
+        hist['gamma_eff'][t] = info['gamma_eff']
         # Three-channel valence
         hist['v_model'][t]   = info['v_model']
         hist['v_reward'][t]  = info['v_reward']
@@ -131,7 +148,11 @@ def _make_history(T, K):
         dF             = np.zeros(T),
         valence_jc     = np.zeros(T),
         G              = np.zeros((T, N_ACTIONS)),
+        G_one_step     = np.zeros((T, N_ACTIONS)),
+        counterfactual_regret = np.zeros(T),
+        counterfactual_horizon = np.zeros(T),
         pi             = np.zeros((T, N_ACTIONS)),
+        gamma_eff      = np.zeros(T),
         d2F            = np.zeros(T),
         anticipation   = np.zeros(T),
         # Three-channel valence

@@ -17,3 +17,10 @@ build/
 *.fdb_latexmk
 *.fls
 *.toc
+
+# Third-party datasets (184MB; provenance + download sources in EMPIRICAL_RECORD.md)
+data_raw/
+
+# Ad-hoc repo snapshots
+temporal_framing_model.zip
+temporal-framing-model.zip
