@@ -1247,101 +1247,89 @@ def plot_pi_pos_dynamics(results, save_path=None):
 # ── Figure 14: Stress decay (emergent depression) ───────
 def plot_stress_decay(results, save_path=None):
     """
-    Figure 14: Emergent depression under chronic stress via hierarchical M5.
+    Figure 14: Diathesis-stress. Depression emerges only from vulnerability x
+    stress; the healthy agent is resilient even under chronic stress.
 
-    Row 1: (a) E[pi_pos], (b) valence, (c) RECALL proportion
-    Row 2: (d)-(e) mood posterior heatmaps for each condition
+    Row 1: (a) E[pi_pos] trajectories, (b) believed valence, (c) 2x2 final mood
+    Row 2: (d) mood posterior (vulnerable+stress, collapses), (e) mood posterior
+           (healthy+stress, resilient), (f) mood entropy
     """
-    names = ['healthy_stable', 'healthy_under_stress']
-    _SDCOL = {'healthy_stable': '#2ecc71', 'healthy_under_stress': '#e74c3c'}
+    names = ['healthy_calm', 'healthy_stress', 'vulnerable_calm', 'vulnerable_stress']
+    _SDCOL = {'healthy_calm': '#2ecc71', 'healthy_stress': '#0072B2',
+              'vulnerable_calm': '#E69F00', 'vulnerable_stress': '#D55E00'}
     fig, axes = plt.subplots(2, 3, figsize=(17, 9),
                              gridspec_kw={'height_ratios': [1, 1.2]})
-    sm_alpha = 0.04  # lighter smoothing for longer T
+    sm_alpha = 0.04
 
-    # ── Row 1a: pi_pos divergence ──
+    # ── (a) pi_pos trajectories ──
     ax = axes[0, 0]
     for name in names:
         h = results[name]
-        T = len(h['pi_pos'])
-        t = np.arange(T)
-        label = name.replace('_', ' ').title()
-        ax.plot(t, _ema(h['pi_pos'], sm_alpha), color=_SDCOL[name], lw=1.5,
-                label=label)
-    ax.axhline(2.0, color='gray', lw=0.8, ls=':', label='$\\theta$')
-    ax.set_xlabel('Timestep')
-    ax.set_ylabel('$\\mathbb{E}[\\pi_{\\mathrm{pos}}]$')
+        ax.plot(np.arange(len(h['pi_pos'])), _ema(h['pi_pos'], sm_alpha),
+                color=_SDCOL[name], lw=1.6, label=name.replace('_', ' ').title())
+    ax.axhline(2.0, color='gray', lw=0.8, ls=':', label='rumination knee $\\theta$')
+    ax.set_xlabel('Timestep'); ax.set_ylabel('$\\mathbb{E}[\\pi_{\\mathrm{pos}}]$')
     ax.set_ylim(0, 8.5)
-    ax.set_title('(a) $\\pi_{\\mathrm{pos}}$ Under Chronic Stress')
-    ax.legend(fontsize=8)
+    ax.set_title('(a) Mood trajectory by condition')
+    ax.legend(fontsize=7.5)
 
-    # ── Row 1b: Valence trajectories ──
+    # ── (b) believed valence ──
     ax = axes[0, 1]
     for name in names:
         h = results[name]
-        T = len(h['valence_belief'])
-        t = np.arange(T)
-        label = name.replace('_', ' ').title()
-        ax.plot(t, _ema(h['valence_belief'], sm_alpha), color=_SDCOL[name],
-                lw=1.5, label=label)
-    ax.set_xlabel('Timestep')
-    ax.set_ylabel('Believed Valence')
+        ax.plot(np.arange(len(h['valence_belief'])),
+                _ema(h['valence_belief'], sm_alpha),
+                color=_SDCOL[name], lw=1.6, label=name.replace('_', ' ').title())
+    ax.axhline(0.5, color='gray', lw=0.8, ls=':')
+    ax.set_xlabel('Timestep'); ax.set_ylabel('Believed valence')
     ax.set_ylim(-0.05, 1.05)
-    ax.set_title('(b) Valence Trajectories')
-    ax.legend(fontsize=8)
+    ax.set_title('(b) Valence: the mood evidence')
 
-    # ── Row 1c: RECALL proportion ──
+    # ── (c) 2x2 diathesis-stress interaction: final mood ──
     ax = axes[0, 2]
-    win = 50
-    for name in names:
-        h = results[name]
-        T = len(h['action'])
-        t = np.arange(T)
-        recall_rate = np.convolve(
-            (h['action'] == RECALL).astype(float),
-            np.ones(win) / win, mode='same')
-        label = name.replace('_', ' ').title()
-        ax.plot(t, recall_rate, color=_SDCOL[name], lw=1.5, label=label)
-    ax.set_xlabel('Timestep')
-    ax.set_ylabel('RECALL proportion (rolling)')
-    ax.set_ylim(-0.05, 1.05)
-    ax.set_title('(c) RECALL Utilisation')
+    final = {n: float(np.mean(results[n]['pi_pos'][-300:])) for n in names}
+    x = np.arange(2)  # calm, stress
+    w = 0.36
+    healthy = [final['healthy_calm'], final['healthy_stress']]
+    vuln = [final['vulnerable_calm'], final['vulnerable_stress']]
+    b1 = ax.bar(x - w/2, healthy, w, color='#2ecc71', label='healthy', edgecolor='white')
+    b2 = ax.bar(x + w/2, vuln, w, color='#D55E00', label='vulnerable', edgecolor='white')
+    for bars in (b1, b2):
+        for b in bars:
+            ax.text(b.get_x()+b.get_width()/2, b.get_height()+0.1,
+                    f'{b.get_height():.1f}', ha='center', fontsize=9)
+    ax.axhline(2.0, color='gray', lw=0.8, ls=':', label='rumination knee')
+    ax.set_xticks(x); ax.set_xticklabels(['low stress', 'chronic stress'])
+    ax.set_ylabel('final $\\mathbb{E}[\\pi_{\\mathrm{pos}}]$'); ax.set_ylim(0, 8.5)
+    ax.set_title('(c) Diathesis $\\times$ stress: only the\nconjunction crosses into depression')
     ax.legend(fontsize=8)
 
-    # ── Row 2: mood posterior heatmaps ──
-    for col_idx, name in enumerate(names):
+    # ── (d, e) mood posteriors: vulnerable+stress vs healthy+stress ──
+    for col_idx, name in [(0, 'vulnerable_stress'), (1, 'healthy_stress')]:
         ax = axes[1, col_idx]
-        h = results[name]
-        mb = h['mood_beliefs']  # (T, N_MOOD)
-        T = mb.shape[0]
+        mb = results[name]['mood_beliefs']; T = mb.shape[0]
         im = ax.imshow(mb.T, aspect='auto', origin='lower',
-                       extent=[0, T, MOOD_BIN_CENTERS[0] - 0.5,
-                               MOOD_BIN_CENTERS[-1] + 0.5],
+                       extent=[0, T, MOOD_BIN_CENTERS[0]-0.5, MOOD_BIN_CENTERS[-1]+0.5],
                        cmap='viridis', vmin=0, vmax=1)
         ax.set_xlabel('Timestep')
         if col_idx == 0:
             ax.set_ylabel('$\\pi_{\\mathrm{pos}}$ bin')
-        label = name.replace('_', ' ').title()
-        ax.set_title(f'({"de"[col_idx]}) Mood Posterior: {label}')
+        tag = 'vulnerable + stress (collapses)' if col_idx == 0 else 'healthy + stress (resilient)'
+        ax.set_title(f'({"de"[col_idx]}) Mood posterior: {tag}')
         plt.colorbar(im, ax=ax, shrink=0.8, label='$q(\\mu)$')
 
-    # Third panel in row 2: difference in mood entropy
+    # ── (f) mood entropy ──
     ax = axes[1, 2]
     for name in names:
-        h = results[name]
-        mb = h['mood_beliefs']
-        T = mb.shape[0]
-        t = np.arange(T)
+        h = results[name]; mb = h['mood_beliefs']
         mood_H = -np.sum(mb * np.log(mb + 1e-16), axis=1)
-        label = name.replace('_', ' ').title()
-        ax.plot(t, _ema(mood_H, sm_alpha), color=_SDCOL[name], lw=1.5,
-                label=label)
-    ax.set_xlabel('Timestep')
-    ax.set_ylabel('$H[q(\\mu)]$')
-    ax.set_title('(f) Mood Posterior Entropy')
-    ax.legend(fontsize=8)
+        ax.plot(np.arange(mb.shape[0]), _ema(mood_H, sm_alpha),
+                color=_SDCOL[name], lw=1.4, label=name.replace('_', ' ').title())
+    ax.set_xlabel('Timestep'); ax.set_ylabel('$H[q(\\mu)]$')
+    ax.set_title('(f) Mood posterior entropy')
 
-    fig.suptitle('Emergent Depression Under Chronic Stress '
-                 '(Hierarchical M5 Mood Layer)',
+    fig.suptitle('Diathesis-Stress: Depression Emerges from Vulnerability $\\times$ '
+                 'Chronic Stress (Hierarchical M5 Mood Layer)',
                  fontsize=14, y=1.02)
     plt.tight_layout()
     if save_path:
