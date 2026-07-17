@@ -64,11 +64,11 @@ def fig_model_advantage():
                   fontsize=10.5, loc="left")
 
     # --- Panels B, C: ESM affect-dynamics on two independent samples ---
-    _esm_panel(axB, "B", "Extension: remitted-depression ESM\n(Geschwind–Bringmann, n=129)",
-               [0.089, 0.274, 0.097], [0.193, 0.302, 0.170])
+    _esm_panel(axB, "B", "Extension: remitted-depression ESM\n(Geschwind-Bringmann, n=129)",
+               [0.089, 0.274, 0.097], [0.194, 0.300, 0.168])
     axB.text(-0.44, 0.235, "2.2x", ha="left", color=VERM, fontsize=11, fontweight="bold")
     _esm_panel(axC, "C", "Replication: reliability ESM\n(osf.io/83cfk, n=91)",
-               [0.475, 0.338, 0.276], [0.486, 0.377, 0.322])
+               [0.475, 0.338, 0.276], [0.485, 0.374, 0.317])
 
     fig.suptitle("Subsumes standard reward-affect models (A); the affect-dynamics advantage is real "
                  "but sample-dependent: large where affect carries dynamics (B), near parity where "
