@@ -222,7 +222,7 @@ def plot_granularity(results, save_path=None):
     # (b) variance box
     ax = axes[0, 1]
     vv = [[np.var(r['valence_belief']) for r in results[K]] for K in Ks]
-    ax.boxplot(vv, labels=[str(K) for K in Ks])
+    ax.boxplot(vv, tick_labels=[str(K) for K in Ks])
     ax.set_xlabel('Granularity K')
     ax.set_ylabel('Valence Variance')
     ax.set_title('(b) Oscillation Amplitude')
