@@ -41,25 +41,25 @@ of how deeply memories and plans are unrolled, and show that a single
 \emph{depth regulator} with two temporal faces reproduces the classical split
 between rumination (past-directed) and worry (future-directed). Affect is a
 \emph{readout layer} over a task-specific generative model, and the three channels
-are general operators on its inference dynamics. Empirically, the framework both
-\emph{subsumes} and \emph{extends} prior models. Instantiated over a gamble
-task-model on the Great Brain Experiment happiness data ($n=14{,}803$ held-out
-participants), the channels recover the standard happiness equation in a
-head-to-head where each predecessor contributes at most one affective channel (adding
-the forward/expected-free-energy channel to a reward-prediction-error channel gives a
-$+30\%$ gain); and driven through real
-experience-sampling sequences from two independent samples, the full model outpredicts
-linear autoregressive baselines at every horizon, by about twice at one step where
-affect carries volatile dynamics (a remitted-depression sample) and by smaller margins
-where affect is already highly persistent (a reliability sample), with its latent
-temporal-frame state tracking an independently measured symptom it is never shown
-($r=0.17$). The same architecture yields a temporal
-taxonomy of emotion and a generative account of counterfactual emotions (regret,
-relief) whose behavioural signature a reward-only model cannot produce (regret drives
-choice-switching over and above one's own outcome, $t=10.4$), and a two-level account
-of depressive affect. We distinguish predictive
-claims (the channel integration) from generative ones (the counterfactual and
-hedonic-asymmetry mechanisms), and ground every structural choice in the literature.
+are general operators on its inference dynamics. Empirically, the integration does what
+no single-channel predecessor can, and matches the reference where a like-for-like
+comparison exists. It supports capabilities none of the prior models possesses: a
+latent temporal-frame state that tracks an independently measured symptom it is never
+shown ($r=0.17$); counterfactual emotions with a behavioural signature a reward-only
+model cannot produce (regret drives choice-switching over and above one's own outcome,
+$t=10.4$, replicated on a second dataset); and a mood layer that yields a
+diathesis-stress route to depression, where only vulnerability combined with chronic
+stress collapses into a self-sustaining low-mood attractor. Where a predictive
+comparison is well posed, driven through real experience-sampling sequences from two
+independent samples, the full model outpredicts linear autoregressive baselines out of
+sample, roughly doubling one-step skill where affect carries volatile dynamics, and an
+inertia ablation shows the gain comes from the model's own forward temporal dynamics
+rather than a persistence prior. On a static gamble it recovers the standard happiness
+equation ($n=14{,}803$ held out) where each predecessor channel alone falls short,
+reaching that ceiling without injecting expected value as a regressor (the
+forward/expected-free-energy channel supplies it by construction, a $+30\%$ gain over a
+reward-prediction-error channel). Throughout we separate predictive claims (the channel
+integration) from generative ones (counterfactual and hedonic-asymmetry mechanisms).
 \end{abstract}
 
 \tableofcontents
@@ -167,7 +167,9 @@ failure mode of the shallow setting is \emph{overgeneral memory}
 is answered from the kind of person one takes oneself to be, not from an episode.
 This fixes what the past-directed operator of \S\ref{sec:model} must do. There the
 RECALL action pulls represented valence toward an identity-anchored target whose sign
-is set by the agent's positive-belief precision, so a coarse, negatively biased self
+is set by the agent's positive-belief precision ($\pi_{\text{pos}}$, the confidence of
+the slow mood belief that outcomes will be favourable; formalised in
+\S\ref{sec:model}), so a coarse, negatively biased self
 answers a cue with overgeneral, negatively toned material, the failure mode just
 described. The abstract negotiation becomes one control variable in the model, how
 deeply retrieval descends the hierarchy.
@@ -219,10 +221,11 @@ F = \underbrace{-\mathbb{E}_{q(s)}[\ln p(o\mid s)]}_{\text{accuracy}}
 which scores how well the \emph{current} model fits \emph{past} observations.
 \citet{joffily2013emotional} showed that its temporal derivative is a valence signal:
 decreasing $F$ (improving fit) is positive valence, increasing $F$ negative. The
-second derivative differentiates affective dynamics, accelerating improvement as
-hope, decelerating improvement stabilising into happiness, and their negatives into
-fear and unhappiness, so a family of affective states derives from a single
-backward-looking quantity.
+second derivative differentiates its dynamics: accelerating improvement, decelerating
+improvement toward a plateau, and their negatives give a family of affective states
+from a single backward-looking quantity. These are dynamics of \emph{past} model fit
+and are distinct from the forward-looking hope and fear of \S\ref{sec:taxonomy}, which
+evaluate \emph{future} observations, even where ordinary language reuses the words.
 
 \subsection{EFE as forward-looking evaluation}
 For a policy $\pi$ producing predicted observations,
@@ -327,7 +330,11 @@ monitoring \citep{stephan2016allostatic}.
 ungrounded forward route that bypasses interoception and episodic recall.
 \end{description}
 $\mathbf B_{\text{frame}}$ matrices are additionally learned online via Dirichlet
-updates, so agents acquire personalised temporal-attention operators.
+updates, so agents acquire personalised temporal-attention operators. Here $\sigma$ is
+the logistic function and $\theta=2$ the precision threshold; the exact frame- and
+valence-transition entries, the channel temperatures $\tau_{\text{model}},
+\tau_{\text{reward}}, \tau_{\text{action}}$, and the mood-layer constants are given in
+the supplementary implementation (\texttt{generative\_model.py}, \texttt{agent.py}).
 
 \subsection{Extensions and the mood layer}
 Two extensions capture affective pathology. \emph{Asymmetric hedonic sensitivity}
@@ -338,9 +345,10 @@ reward and punishment processing \citep{eshel2010reward,pizzagalli2014depression
 \citep{dacosta2020active}, so $\ln\pi(a)=-\gamma G(a)+E_a$, modelling EFE-suboptimal
 habitual tendencies such as ruminative fixation \citep{watkins2008constructive}. A
 hierarchical \emph{mood layer} (M5) infers $\pi_{\text{pos}}$ over slow timescales as
-a categorical POMDP driven by mean VFE, separating within-trial emotion from
-cross-trial mood \citep{hesp2021deeply,eldar2016mood} and producing self-reinforcing
-mood attractors from Bayesian inference alone (\S\ref{sec:dynamics}).
+a categorical POMDP driven by accumulated believed-valence relative to neutral
+\citep{eldar2016mood}, separating within-trial emotion from cross-trial mood
+\citep{hesp2021deeply} and producing a self-reinforcing low-mood attractor under
+vulnerability and stress from Bayesian inference alone (\S\ref{sec:dynamics}).
 
 Table~\ref{tab:justification} maps each choice to its source; full detail is in
 the supplementary design-justification document.
@@ -445,9 +453,15 @@ The three predecessor accounts are \emph{reduced sub-graphs} of our model
 perception-only VFE model (one factor, no policy, backward channel only);
 \citet{pattisapu2024free} is a single-factor POMDP with policy selection (present
 channel, no temporal frame, no backward derivative); \citet{hesp2021deeply} is a deep
-hierarchical model carrying the forward affective-charge channel but without a reward
-decomposition or a temporal-frame factor. Each is a single-channel restriction of the
-integrated readout; \S\ref{sec:empirical} shows this precisely in a head-to-head.
+hierarchical model carrying the forward affective-charge channel and a slow mood layer,
+but without a reward decomposition or a temporal-frame factor. Each predecessor
+contributes at most one of our affective channels, and we make the debt explicit: the
+mood layer that carries our diathesis-stress dynamics is adopted from
+\citet{hesp2021deeply} (with its evidence changed from free energy to valence,
+\S\ref{sec:dynamics}). The contribution is thus an integration, a task-specific
+task-model, and an inferred temporal frame that none of the three has, not a claim to
+have out-built any one of them on its own terrain; \S\ref{sec:empirical} shows the
+channel decomposition precisely.
 
 \begin{figure}[htbp]
 \centering
@@ -481,7 +495,11 @@ demands. The loop admits two regimes. Under \emph{self-regulation} it is
 homeostatic. High VFE triggers corrective action, and positive $v_{\text{action}}$
 sharpens precision on the corrective trajectory. Under \emph{self-amplification} it is
 pathological. Framing locks into a single mode; precision on that mode's errors
-intensifies, and the agent cannot update away.
+intensifies, and the agent cannot update away. We illustrate the dynamics across three
+parameter phenotypes used in Figure~\ref{fig:framing}: a \emph{healthy} agent (high
+$\pi_{\text{pos}}$, intact interoception), a \emph{depressive} one (low $\pi_{\text{pos}}$,
+blunted reward sensitivity), and a \emph{manic} one (low interoceptive precision and
+disinhibited forward framing).
 
 \subsection{RECALL supports engagement, and its feedback reliance}
 Past-oriented framing is preparatory: RECALL stabilises beliefs by pulling toward the
@@ -525,17 +543,25 @@ Chronic stress realises the double bind of \S\ref{sec:regulator}. Affect turns
 negative but construal stays coarse, so neither pathway to policy selection delivers.
 A stressed profile (very high volatility, amplified reward sensitivity, stress-impaired
 interoception, reduced $\pi_{\text{pos}}$) shows future-dominated fixation, dominant
-\textsc{future} frame belief ($0.66$ vs $0.32$ healthy), depleted \textsc{present}
-($0.25$ vs $0.46$), forward-framing dominance (ABSTRACT, the low-cost prospection
-operator, taken on $79\%$ of steps), and strongly negative reward valence
-($-0.42$ vs $+0.10$ healthy) from \emph{frustrated forward projection}: abstract
+\textsc{future} frame belief ($0.57$ vs $0.32$ healthy), depleted \textsc{present}
+($0.32$ vs $0.46$), forward-framing dominance (ABSTRACT, the low-cost prospection
+operator, taken on $66\%$ of steps), and negative reward valence
+($-0.35$ vs $+0.06$ healthy) from \emph{frustrated forward projection}: abstract
 prospection commits to above-neutral predictions that a volatile world falsifies
-(Figure~\ref{fig:stress}). At the mood timescale, the
-M5 layer turns this into an attractor. Two agents with identical healthy initial
-conditions but different volatility diverge, one drifting to high $\pi_{\text{pos}}$
-and the other crashing below the sigmoid knee where RECALL collapses
-(Figure~\ref{fig:mood}), from accumulated VFE evidence alone, with no change to the
-initial parameters.
+(Figure~\ref{fig:stress}). The direction of these effects holds across seeds.
+
+At the slow mood timescale, the M5 layer accumulates believed-valence evidence, so
+persistently below-neutral affect drives positive-belief precision $\pi_{\text{pos}}$
+below the rumination knee, where RECALL turns to rumination and sustains the low-mood
+state. This produces a \emph{diathesis-stress} pattern rather than a stress-alone one
+(Figure~\ref{fig:mood}). Crossing vulnerability (low $\pi_{\text{pos}}$, blunted reward
+sensitivity, weak interoception) against chronic stress (high volatility) in a $2\times2$
+design, only the conjunction collapses. Across eight seeds a healthy agent stays high
+even under chronic stress (final $\pi_{\text{pos}}=5.2\pm0.7$, depressed in $0/8$),
+vulnerability alone recovers ($4.2\pm1.0$, $0/8$), and only the vulnerable agent under
+stress falls into a self-sustaining depressive attractor ($0.8\pm0.2$, $8/8$ below the
+knee). Neither factor alone suffices, matching the diathesis-stress account of
+depression \citep{monroe1991diathesis} and the resilience of most people to stress.
 
 \begin{figure}[htbp]
 \centering
@@ -550,10 +576,15 @@ reward valence drives composite valence down via frustrated forward projection.}
 \begin{figure}[htbp]
 \centering
 \includegraphics[width=\textwidth]{figures/fig14_stress_decay.png}
-\caption{\textbf{Emergent mood divergence (M5).} Identical healthy initial parameters;
-only environmental volatility differs (0.3 vs 0.9). (a) $\mathbb{E}[\pi_{\text{pos}}]$
-diverges. (b) Valence diverges. (c) RECALL utilisation. (d--e) Mood-posterior
-heatmaps. (f) Mood-posterior entropy. $T=3000$.}
+\caption{\textbf{Diathesis-stress in the M5 mood layer.} A $2\times2$ design crosses
+vulnerability (low $\pi_{\text{pos}}$, blunted reward sensitivity, weak interoception)
+with chronic stress (high volatility). (a) Mood ($\mathbb{E}[\pi_{\text{pos}}]$)
+trajectories; (b) believed valence, the mood evidence, relative to neutral (dotted).
+(c) Final mood by condition: only vulnerability $\times$ stress crosses the rumination
+knee ($\theta=2$). (d) The vulnerable-under-stress mood posterior collapses to the low
+bin; (e) the healthy-under-stress posterior stays high (resilience). (f) Mood-posterior
+entropy. Robust across seeds (vulnerable$+$stress depressed $8/8$; others $0/8$).
+$T=3000$.}
 \label{fig:mood}
 \end{figure}
 
@@ -568,7 +599,9 @@ a behavioural prediction that a reward-only model cannot. Across 143 participant
 better \emph{foregone} outcome drives switching on the next choice over and above one's
 own outcome ($t=10.4$; $P(\text{switch}\mid\text{regret})=0.45$ vs
 $P(\text{switch}\mid\text{relief})=0.26$; Figure~\ref{fig:cf}), a dissociation a
-factual (no-counterfactual) model has no way to produce. What the counterfactual term
+factual (no-counterfactual) model has no way to produce. The same switching signature
+replicates on a second complete-feedback dataset \citep{palminteri2017confirmation}
+($n=20$). What the counterfactual term
 does \emph{not} do is improve the prediction of affect magnitude or choice likelihood:
 on complete-feedback choice data and on large-scale affect data it is redundant with
 the reward-prediction signal (\S\ref{sec:empirical}). We therefore class it as a
@@ -578,7 +611,7 @@ predictive-fit improver.
 \begin{figure}[htbp]
 \centering
 \includegraphics[width=0.5\textwidth]{figures/fig_counterfactual_signature.png}
-\caption{\textbf{Counterfactual emotion drives behaviour.} People switch $\sim$1.8$\times$
+\caption{\textbf{Counterfactual emotion drives behaviour.} People switch $\sim$1.7$\times$
 more after regret than relief (\citealp{sugawara2021dissociation}, $n=143$), a signature a
 factual model cannot generate. This validates the mechanism as the generator of
 regret/relief, independent of its (null) contribution to prediction.}
@@ -606,7 +639,6 @@ Temporal-orientation ESM \citep{mulholland2023} & 101 & per-probe past/future th
 Sugawara \& Katahira \citep{sugawara2021dissociation} & 143 & choices; obtained + foregone outcomes & open (OSF) & counterfactual signature \\
 Palminteri et al.\ \citep{palminteri2017confirmation} & 20 & choices; obtained + foregone outcomes & open (OSF) & counterfactual replication \\
 Reward+punishment reversal (osf.io/2gq96) & 128 (64/64) & learning rates by valence & open (OSF) & general precision deficit \\
-Autobiographical-memory meta-analysis & 181 ES & AMT specificity by cue valence & recovered & RECALL/specificity direction \\
 Reward Positivity (MEG) \citep{pirrung2025} & 90 (52/38) & neural reward response & CC0 & reward reactivity ($c_{\text{pos}}$) \\
 \bottomrule
 \end{tabular}
@@ -720,11 +752,13 @@ more volatile affect is where the model helps most.
 Component ablations locate the source of the advantage. Driving the model on valence
 alone in the clinical sample changes almost nothing ($R^2=0.20$ at one step), so the
 gain is not the event channel acting as a hidden regressor. Removing the
-persistence-like valence-inertia term leaves the advantage largely intact at every
-horizon: on the clinical sample the model still reaches $R^2=0.14$ at one step and
-$0.29$ at two steps with no inertia at all (versus baselines $0.09$ and $0.27$), and on
-the reliability sample $0.46$ and $0.34$ (versus $0.48$ and $0.34$). The model's own
-forward dynamics, not a persistence prior, carry the multi-step prediction. This holds
+persistence-like valence-inertia term leaves the clinical-sample advantage intact
+(the model still reaches $R^2=0.14$ at one step and $0.29$ at two steps with no inertia
+at all, versus baselines $0.09$ and $0.27$); on the already-persistent reliability
+sample the model sits at parity without inertia ($0.46$ vs $0.48$ at one step,
+$0.34$ vs $0.34$ at two), consistent with there being little non-persistence structure
+to capture there. Where the advantage exists, the model's own forward dynamics rather
+than a persistence prior carry it. This holds
 because the precision-gated prospection operator (\S\ref{sec:model}) keeps forward
 rollouts calibrated to the agent's actual affective level rather than drifting toward a
 fixed optimistic target. We do not claim a head-to-head reimplementation of each
@@ -744,10 +778,10 @@ valence alone there.}
 Sample & Predictor & 1 step & 2 steps & 3 steps \\
 \midrule
 Remitted-depression ($n{=}129$) & baseline & 0.089 & 0.274 & 0.097 \\
-\citep{bringmann2013,geschwind2011} & \textbf{full model} & \textbf{0.194} & \textbf{0.300} & \textbf{0.168} \\
+\citep{bringmann2013,geschwind2011} & \textbf{full model} & \textbf{0.194} & \textbf{0.301} & \textbf{0.171} \\
 \midrule
 Reliability ($n{=}91$) & baseline & 0.475 & 0.338 & 0.276 \\
-(\texttt{osf.io/83cfk}) & \textbf{full model} & \textbf{0.485} & \textbf{0.374} & \textbf{0.317} \\
+(\texttt{osf.io/83cfk}) & \textbf{full model} & \textbf{0.485} & \textbf{0.375} & \textbf{0.319} \\
 \bottomrule
 \end{tabular}
 \end{table}
