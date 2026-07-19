@@ -130,13 +130,13 @@ environmental complexity, novelty, uncertainty, and affective load. Near events 
 represented concretely, distant events abstractly and schematically
 \citep{tropeliberman2010}. Optimism is computationally sensible here. The optimal
 path to a distant goal cannot be specified in advance, and filling in that far-off
-detail tends to provoke anxiety rather than yield mastery. On the broaden-and-build
+detail tends to provoke anxiety more than it yields mastery. On the broaden-and-build
 account \citep{fredrickson2001}, positive affect widens the field of available thought and action and is less
 action-specific than negative affect, so future aiming is supported by beliefs that
 orient without specifying the future in full. Optimism here is the healthy,
-high-precision setting rather than a universal default: under low positive-belief
-precision the same forward machinery yields anxious rather than hopeful prospection, a
-contingency we make explicit in the model (\S\ref{sec:model}) and test directly
+high-precision setting, not a universal default: under low positive-belief
+precision the same forward machinery turns anxious, yielding worry-type rather than
+hopeful prospection, a contingency we make explicit in the model (\S\ref{sec:model}) and test directly
 (\S\ref{sec:orientation}).
 
 \subsection{Two logics of action and the identity pole}
@@ -150,7 +150,7 @@ choice on slow, temporally extended beliefs about who one is and stays shallow;
 consequence-based control descends toward episode-level simulation. This maps a
 long-standing continuum between habitual (model-free) and goal-directed (model-based)
 control, but recasts it in \emph{temporal} terms. A past-oriented mode leans on
-regularities slowly distilled from experience, a future-oriented mode is less tied to
+regularities slowly distilled from experience; a future-oriented mode is less tied to
 the current context.
 
 \subsection{Retrieval constraints, interoception, and overgeneral memory}
@@ -280,8 +280,8 @@ observation $o_{\text{val}}$, and the state $v$ is what the agent infers from it
 Valence is therefore neither simply given nor only a derivative of free energy. The
 dynamic signals drive the felt observation, and $v$ is the belief the agent forms
 about its affective state from that observation together with its other evidence. This
-split is what we mean by affect as a readout layer over a task-specific generative
-model. Figure~\ref{fig:factorgraph} shows the factor graph. To read it, note that the
+split is the sense in which affect is a readout, sitting on top of the task model
+rather than replacing it. Figure~\ref{fig:factorgraph} shows the factor graph. To read it, note that the
 agent receives three observations (the coloured outcome squares: external feedback,
 interoception, and felt valence), infers the three hidden factors that generate them
 through a likelihood $\mathbf A$ (valence, energy, temporal frame), and moves each
@@ -415,7 +415,7 @@ present channel compares obtained reward with its expectation; the surplus makes
 $v_{\text{reward}}>0$. The backward channel registers that the win improved model fit,
 so $F$ fell and $v_{\text{model}}>0$. The forward channel registers that policy
 precision has shifted toward gambling and that this lowered expected free energy, so
-its affective charge $v_{\text{action}}>0$. All three agree, the composite
+its affective charge $v_{\text{action}}>0$. All three agree; the composite
 $V=\tanh(v_{\text{model}}+v_{\text{reward}}+v_{\text{action}})$ is strongly positive,
 and the state is unambiguous satisfaction. Now change one thing: let the gamble lose,
 but let the loss reveal that the safe option was the better policy. The present and
