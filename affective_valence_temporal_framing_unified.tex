@@ -41,25 +41,24 @@ of how deeply memories and plans are unrolled, and show that a single
 \emph{depth regulator} with two temporal faces reproduces the classical split
 between rumination (past-directed) and worry (future-directed). Affect is a
 \emph{readout layer} over a task-specific generative model, and the three channels
-are general operators on its inference dynamics. Empirically, the integration does what
-no single-channel predecessor can, and matches the reference where a like-for-like
-comparison exists. It supports capabilities none of the prior models possesses: a
-latent temporal-frame state that tracks an independently measured symptom it is never
-shown ($r=0.17$); counterfactual emotions with a behavioural signature a reward-only
-model cannot produce (regret drives choice-switching over and above one's own outcome,
-$t=10.4$, replicated on a second dataset); and a mood layer that yields a
-diathesis-stress route to depression, where only vulnerability combined with chronic
-stress collapses into a self-sustaining low-mood attractor. Where a predictive
-comparison is well posed, driven through real experience-sampling sequences from two
-independent samples, the full model outpredicts linear autoregressive baselines out of
-sample, roughly doubling one-step skill where affect carries volatile dynamics, and an
-inertia ablation shows the gain comes from the model's own forward temporal dynamics
-rather than a persistence prior. On a static gamble it recovers the standard happiness
-equation ($n=14{,}803$ held out) where each predecessor channel alone falls short,
-reaching that ceiling without injecting expected value as a regressor (the
-forward/expected-free-energy channel supplies it by construction, a $+30\%$ gain over a
-reward-prediction-error channel). Throughout we separate predictive claims (the channel
-integration) from generative ones (counterfactual and hedonic-asymmetry mechanisms).
+are general operators on its inference dynamics. Empirically, driven through real experience-sampling sequences from two independent
+samples, the full model predicts next-moment affect out of sample better than linear
+autoregressive baselines, roughly doubling one-step skill where affect carries volatile
+dynamics (held-out $R^2=0.19$ vs $0.09$), the out-of-sample lead holding on a second,
+independent sample, and an inertia ablation shows the gain comes from the model's own
+forward temporal dynamics rather than a persistence prior. On a static gamble it recovers the standard happiness equation
+($n=14{,}803$ held out) where each predecessor channel alone falls short, reaching that
+ceiling without injecting expected value as a regressor (the forward/expected-free-energy
+channel supplies it by construction, a $+30\%$ gain over a reward-prediction-error
+channel). The same integration then supports capabilities the single-channel accounts
+lack: a latent temporal-frame state that tracks an independently measured symptom it is
+never shown ($r=0.17$); counterfactual emotions with a behavioural signature a
+reward-only model cannot produce (regret drives choice-switching over and above one's
+own outcome, $t=10.4$, replicated on a second dataset); and, as a demonstration awaiting
+longitudinal test, a mood layer that produces a diathesis-stress route to depression
+from the conjunction of vulnerability and chronic stress. Throughout we separate
+predictive claims (the channel integration) from generative ones (counterfactual and
+hedonic-asymmetry mechanisms).
 \end{abstract}
 
 \tableofcontents
@@ -459,7 +458,7 @@ contributes at most one of our affective channels, and we make the debt explicit
 mood layer that carries our diathesis-stress dynamics is adopted from
 \citet{hesp2021deeply} (with its evidence changed from free energy to valence,
 \S\ref{sec:dynamics}). The contribution is thus an integration, a task-specific
-task-model, and an inferred temporal frame that none of the three has, not a claim to
+model, and an inferred temporal frame that none of the three has, not a claim to
 have out-built any one of them on its own terrain; \S\ref{sec:empirical} shows the
 channel decomposition precisely.
 
@@ -561,7 +560,13 @@ even under chronic stress (final $\pi_{\text{pos}}=5.2\pm0.7$, depressed in $0/8
 vulnerability alone recovers ($4.2\pm1.0$, $0/8$), and only the vulnerable agent under
 stress falls into a self-sustaining depressive attractor ($0.8\pm0.2$, $8/8$ below the
 knee). Neither factor alone suffices, matching the diathesis-stress account of
-depression \citep{monroe1991diathesis} and the resilience of most people to stress.
+depression \citep{monroe1991diathesis} and the resilience of most people to stress. We
+present this as a mechanistic demonstration, not evidence: the parameters instantiate
+vulnerability rather than fit it. It makes a falsifiable prediction: in longitudinal
+experience-sampling, the interaction of vulnerability and stress, not either main
+effect, should predict transition into sustained low mood, and the transition should be
+preceded by a persistent below-neutral shift in momentary valence rather than in
+prediction error.
 
 \begin{figure}[htbp]
 \centering
@@ -697,10 +702,14 @@ retaining a single channel of this upper layer.}
 
 \begin{table}[htbp]
 \centering\small
-\caption{\textbf{Head-to-head on Rutledge GBE.} Each predecessor instantiated as a
-single channel over the same gamble task-model (Figure~\ref{fig:gamble}); held-out
-$R^2$ for momentary happiness ($14{,}803$ participants, $96{,}624$ ratings), with no
-expected value injected as a regressor.}
+\caption{\textbf{Channel decomposition on the Rutledge gamble.} Each predecessor is
+instantiated as its single affective channel over the same gamble task-model
+(Figure~\ref{fig:gamble}); held-out $R^2$ for momentary happiness ($14{,}803$
+participants, $96{,}624$ ratings), no expected value injected as a regressor. On a
+single-shot gamble the backward (rate-of-change) and forward (policy-revision) channels
+have no temporal dynamics to track, so their low scores are category-appropriate, not
+defeats; the informative comparison is the present channel alone ($0.111$) against the
+integrated readout ($0.144$), which reaches the reference ceiling.}
 \label{tab:headtohead}
 \begin{tabular}{llc}
 \toprule
@@ -719,10 +728,11 @@ Happiness equation \citep{rutledge2014} & CR$+$EV$+$RPE (reference) & 0.146 \\
 \begin{figure}[htbp]
 \centering
 \includegraphics[width=\textwidth]{figures/fig_model_advantage.png}
-\caption{\textbf{A general affect-readout framework.} (A) Head-to-head (Rutledge GBE): each predecessor reconstructed as one channel over the same gamble
-task-model; no single channel reproduces the integrated result (Joffily 0.000, a
-category mismatch on a static gamble; Pattisapu 0.111; Hesp 0.034), while integration
-recovers the happiness equation (dashed, 0.146). (B) On the remitted-depression ESM
+\caption{\textbf{A general affect-readout framework.} (A) Channel decomposition (Rutledge GBE): each predecessor reconstructed as one channel over the same gamble
+task-model; the present channel (Pattisapu 0.111) is the informative single-channel
+comparison, the backward and forward channels being category-mismatched on a static
+gamble, while integration reaches the reference ceiling (0.144 vs happiness equation
+0.146, dashed). (B) On the remitted-depression ESM
 sample, the full model reaches $2.2\times$ the held-out $R^2$ of the best
 linear/autoregressive baseline at one step. (C) On an independent reliability ESM
 sample the model leads at every horizon but by smaller margins, near parity at one
