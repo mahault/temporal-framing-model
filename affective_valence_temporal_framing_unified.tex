@@ -55,7 +55,7 @@ lack: a latent temporal-frame state that tracks an independently measured sympto
 never shown ($r=0.17$); counterfactual emotions with a behavioural signature a
 reward-only model cannot produce (regret drives choice-switching over and above one's
 own outcome, $t=10.4$, replicated on a second dataset); and a mood layer whose
-diathesis-stress prediction holds out of the box in independent data, where a baseline
+diathesis-stress prediction holds in independent data, where a baseline
 vulnerability trait both lowers mood and amplifies affective stress-reactivity (the
 vulnerability$\times$stress interaction, $t=4.2$), the same conjunction that in
 simulation collapses into a self-sustaining low-mood attractor. Throughout we separate
@@ -554,8 +554,7 @@ prospection commits to above-neutral predictions that a volatile world falsifies
 At the slow mood timescale, the M5 layer accumulates believed-valence evidence, so
 persistently below-neutral affect drives positive-belief precision $\pi_{\text{pos}}$
 below the rumination knee, where RECALL turns to rumination and sustains the low-mood
-state. This produces a \emph{diathesis-stress} pattern rather than a stress-alone one
-(Figure~\ref{fig:mood}). Crossing vulnerability (low $\pi_{\text{pos}}$, blunted reward
+state. This produces a \emph{diathesis-stress} pattern (Figure~\ref{fig:mood}). Crossing vulnerability (low $\pi_{\text{pos}}$, blunted reward
 sensitivity, weak interoception) against chronic stress (high volatility) in a $2\times2$
 design, only the conjunction collapses. Across eight seeds a healthy agent stays high
 even under chronic stress (final $\pi_{\text{pos}}=5.2\pm0.7$, depressed in $0/8$),
@@ -598,7 +597,7 @@ trajectories; (b) believed valence, the mood evidence, relative to neutral (dott
 (c) Final mood by condition: only vulnerability $\times$ stress crosses the rumination
 knee ($\theta=2$). (d) The vulnerable-under-stress mood posterior collapses to the low
 bin; (e) the healthy-under-stress posterior stays high (resilience). (f) Mood-posterior
-entropy. Robust across seeds (vulnerable$+$stress depressed $8/8$; others $0/8$).
+entropy. Holds across seeds (vulnerable$+$stress depressed $8/8$; others $0/8$).
 $T=3000$.}
 \label{fig:mood}
 \end{figure}
@@ -870,8 +869,8 @@ Hedonic asymmetry ($c_{\text{pos}}\!\neq\!c_{\text{neg}}$) & generative & blunte
 \end{table}
 
 \section{Clinical mapping: a two-level account of depressive affect}\label{sec:clinical}
-The framework draws a two-level picture of depressive affect and, more usefully,
-predicts a dissociation between the levels that the data bear out. (i) A \emph{general}
+The framework draws a two-level picture of depressive affect and predicts a
+dissociation between the levels that the data bear out. (i) A \emph{general}
 reduction in reinforcement-learning rate/precision, present for both reward and
 punishment learning. In our analysis of an open reward-and-punishment reversal-learning
 dataset (\texttt{osf.io/2gq96}), depressed participants showed reduced learning rates in
