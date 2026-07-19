@@ -384,3 +384,28 @@ phenotypes distinct. Shifted (chronic-stress DEMO, seed 42): stressed future-fra
 0.66->0.57, present 0.25->0.32, reward valence -0.42->-0.35, ABSTRACT 79%->66%
 (qualitative story unchanged). Experiment redesigned as a 2x2 diathesis-stress;
 fig14 rebuilt (STRESS_DECAY_PROFILES, plot_stress_decay).
+
+## 9. Diathesis-stress prediction CONFIRMED on real ESM (2026-07-19, diathesis_stress_test.py)
+
+The mood mechanism (§8) predicts vulnerability (a) lowers baseline mood and (b)
+amplifies affective reactivity to stress -- a vulnerability x stress interaction, not
+either main effect. Tested on the Geschwind ESM (n=128), whose baseline NEUROTICISM
+score (col 12; person-constant) is NEVER used in the affect-dynamics fitting, so this
+is a held-out qualitative prediction. Momentary valence = (cheerful+relaxed) -
+(worried+fearful+sad); stress signal = per-beep event (un)pleasantness.
+
+Result:
+- corr(neuroticism, mean valence) = -0.53  (vulnerability -> lower baseline mood) ✓
+- corr(neuroticism, event->valence reactivity slope) = +0.31, n=128  (amplified
+  reactivity: low-neuroticism slope +1.02 vs high +1.27) ✓
+- pooled within-person event x neuroticism interaction: b=+0.016, SE=0.0038, t=+4.2
+  (11,315 beeps) ✓
+
+Both signatures match the mood layer's simulation (lower baseline + steeper
+stress-reactivity; only the conjunction collapses). Reproduces the established
+neuroticism x stress reactivity effect (Geschwind/Wichers). NOT tested (Geschwind is
+20 days, already-remitted): the months-scale transition into sustained low mood, which
+the mechanism additionally predicts -- awaits longer longitudinal data (openESM
+candidates: Nepal 2024 #0040 441 days; Jang 2024 #0017 402 days; Leuven 3-wave on
+request). Paper upgraded: diathesis-stress is now a confirmed core prediction, not a
+demonstration-awaiting-data.
