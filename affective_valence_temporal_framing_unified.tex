@@ -700,7 +700,28 @@ $T=3000$.}
 \end{figure}
 
 \subsection{Sensitivity to the hand-set constants}\label{sec:sensitivity}
-SENSITIVITY_PLACEHOLDER
+The frame self-transition entries and the valence pull weights of the framing
+operators are set by hand, so we swept them. Figure~\ref{fig:sensitivity} varies the
+target-frame stickiness $s$ over $\{0.5,\dots,0.95\}$ (replacing the four defaults at
+once) and the pull-weight scale $k$ over $\{0.6,\dots,1.4\}$, four seeds per cell, and
+separately varies the gating gain $g$ from $0$ (frame-inert) to $1$. Three results are
+scored: the RECALL collapse under impairment, future fixation under stress, and the
+diathesis-stress conjunction. The RECALL collapse is positive in every cell of the
+$30$-cell grid (range $0.21$ to $0.39$), and future fixation is positive in every cell
+(range $0.00$ to $0.32$), growing with both stickiness and pull weight and vanishing
+only when the pull weights are cut to $0.6$ of their default, where prospection no
+longer moves valence. The diathesis-stress result holds in all four seeds in $77\%$ of
+cells and in a majority of seeds in $87\%$; the failures are all at $k=1.4$, where
+the amplified pulls let the vulnerable agent under stress climb back above the knee
+in some seeds. Against the gain, all three results hold at every $g$; the RECALL
+collapse is larger with gating ($0.37$ to $0.41$ against $0.26$ at $g=0$) and future
+fixation smaller ($0.11$ to $0.25$ against $0.27$), because a past-weighted
+retrospective term makes RECALL more attractive to the healthy agent and a
+present-weighted risk term brakes ABSTRACT in the stressed one. The one quantity
+whose sign depends on the constants is the policy-entropy difference of
+Figure~\ref{fig:feedback}c: it is small and positive across most of the grid but
+negative at $k=1.4$ and at $s=0.95$, and negative at $g=0$. We therefore do not build
+on it.
 
 \begin{figure}[htbp]
 \centering
