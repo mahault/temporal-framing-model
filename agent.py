@@ -44,10 +44,24 @@ class Agent:
                  counterfactual_discount: float = 0.75,
                  adaptive_counterfactual_horizon: bool = False,
                  max_counterfactual_horizon: int = 4,
+                 frame_gain: float = 0.0,
+                 frame_clamp=None,
                  seed: int = 0):
         self.model = model
         self.gamma = gamma
         self.rng = np.random.RandomState(seed)
+        # ── Frame-gated precision (revision 2026-09-27) ──
+        # The inferred temporal frame q(f) redistributes precision across
+        # horizons in two places: (i) the three affective channels of the
+        # valence readout, and (ii) the horizon terms of the expected free
+        # energy used for policy evaluation. Weights are
+        #   w_c = 1 + g * (3 q(f_c) - 1),   c in {PAST, PRESENT, FUTURE},
+        # so they sum to 3 for any q(f) and reduce to (1, 1, 1) when g = 0
+        # (the pre-revision, frame-inert model). frame_clamp forces the
+        # gating posterior to a one-hot frame (ablation); None = use q(f).
+        self.frame_gain = float(frame_gain)
+        self.frame_clamp = frame_clamp
+        self._frame_w = np.ones(3)
         self.tau_model = tau_model
         self.tau_reward = tau_reward
         self.tau_action = tau_action
@@ -236,7 +250,10 @@ class Agent:
         # model forward over short roads-not-taken.
         rollout_horizon = self._current_counterfactual_horizon(float(vfe))
         self._last_counterfactual_horizon = rollout_horizon
-        G = np.array([self._efe_rollout(a, rollout_horizon)
+        # Frame-gated horizon weights from the CURRENT posterior q(f)
+        w_past, w_pres, w_fut = self._frame_weights(q_post)
+        self._frame_w = np.array([w_past, w_pres, w_fut])
+        G = np.array([self._efe_gated(a, rollout_horizon, w_past, w_pres, w_fut)
                       for a in range(N_ACTIONS)])
         G_one_step = np.array([self._efe(a) for a in range(N_ACTIONS)])
 
@@ -259,8 +276,11 @@ class Agent:
             AC = 0.0
             v_action = 0.0
 
-        # Composite valence
-        valence = float(np.tanh(v_model + v_reward + v_action))
+        # Composite valence: frame-gated precision over the three channels
+        # (backward <- PAST, present <- PRESENT, forward <- FUTURE). With
+        # frame_gain = 0 the weights are (1, 1, 1) and this is the plain sum.
+        valence = float(np.tanh(w_past * v_model + w_pres * v_reward
+                                + w_fut * v_action))
 
         action = int(self.rng.choice(N_ACTIONS, p=pi))
         counterfactual_regret = float(G[action] - np.min(G))
@@ -303,8 +323,71 @@ class Agent:
             pi_pos_eff=pi_pos_eff,
             intero_load=self._intero_vfe_ema,
             mood_beliefs=self.mood_beliefs.copy(),
+            frame_weights=self._frame_w.copy(),
         )
         return action, info
+
+    # ── Frame-gated precision ───────────────────────────────
+    def _frame_weights(self, q_post):
+        """Horizon precision weights (w_past, w_present, w_future) from q(f).
+
+        w_c = 1 + g (3 q(f_c) - 1). Sum is 3 for every q(f); g = 0 gives
+        (1, 1, 1). frame_clamp replaces q(f) by a one-hot frame (ablation).
+        """
+        g = self.frame_gain
+        if g <= 0.0:
+            return 1.0, 1.0, 1.0
+        if self.frame_clamp is None:
+            qf = q_post.reshape(self.model.K, self.model.M, 3).sum(axis=(0, 1))
+        else:
+            qf = np.zeros(3)
+            qf[int(self.frame_clamp)] = 1.0
+        w = 1.0 + g * (3.0 * qf - 1.0)
+        w = np.maximum(w, 0.0)
+        return float(w[0]), float(w[1]), float(w[2])
+
+    def _efe_retro(self, action, belief):
+        """Retrospective term: KL[q(s'|a) || D], the divergence of the
+        predicted next state from the agent's identity prior over its own
+        states (D encodes positive self-belief precision). A past-dominant
+        frame evaluates actions by consistency with the established
+        self-narrative (identity-anchored retrieval); this is the term RECALL
+        lowers when it pulls beliefs toward the prior."""
+        q_next = self.model.B[action] @ belief
+        q_next = np.maximum(q_next, EPS)
+        q_next /= q_next.sum()
+        D = np.maximum(self.model.D, EPS)
+        return float(np.dot(q_next, np.log(q_next) - np.log(D)))
+
+    def _efe_gated(self, action, horizon, w_past, w_pres, w_fut):
+        """Frame-gated EFE:
+            G(a) = w_present * G_1(a)                    (one-step risk+ambiguity)
+                 + w_future  * delta * E_pi'[G(a')]      (counterfactual rollout)
+                 + w_past    * KL[q(s'|a) || D]           (retrospective term)
+        With frame_gain = 0: (1, 1, 1) weights but the retrospective term is
+        switched off, so this equals the pre-revision _efe_rollout exactly.
+        """
+        immediate = self._efe_from_belief(action, self.beliefs)
+        future = 0.0
+        if horizon > 1:
+            q_next = self.model.B[action] @ self.beliefs
+            q_next = np.maximum(q_next, EPS)
+            q_next /= q_next.sum()
+            future_G = np.array([
+                self._efe_rollout(a, horizon - 1, q_next)
+                for a in range(N_ACTIONS)
+            ])
+            log_pi = -self.gamma * future_G
+            if self._habit_E is not None:
+                log_pi = log_pi + self._habit_E
+            log_pi -= log_pi.max()
+            future_pi = np.exp(log_pi)
+            future_pi /= (future_pi.sum() + EPS)
+            future = self.counterfactual_discount * float(np.dot(future_pi, future_G))
+        if self.frame_gain <= 0.0:
+            return float(immediate + future)
+        retro = self._efe_retro(action, self.beliefs)
+        return float(w_pres * immediate + w_fut * future + w_past * retro)
 
     def _update_vfe_scale(self, vfe):
         if self._vfe_ema is None:

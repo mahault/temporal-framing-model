@@ -409,3 +409,54 @@ the mechanism additionally predicts -- awaits longer longitudinal data (openESM
 candidates: Nepal 2024 #0040 441 days; Jang 2024 #0017 402 days; Leuven 3-wave on
 request). Paper upgraded: diathesis-stress is now a confirmed core prediction, not a
 demonstration-awaiting-data.
+
+---
+
+## 10. AAAI-27 revision (2026-09-27): frame gating, honest worry test, frame ablation, regret rework, sensitivity
+
+Model change: `agent.py` frame-gated precision, `frame_gain=1.0` (experiments.FRAME_GAIN);
+`frame_gain=0` reproduces every pre-revision number exactly (tests/test_frame_gating.py).
+
+### 10a. Frame-worry association, worry removed from input (`frame_worry_multilevel.py`)
+Geschwind only (osf_83cfk has no worry item). 11,712 beeps, 129 participants.
+
+| model | worry in input | raw r | partial r (v_t, e_t) | within-person r | z raw | z adjusted | z within |
+|---|---|---:|---:|---:|---:|---:|---:|
+| gated (paper) | yes | 0.078 | 0.006 | 0.008 | 6.3 | 0.5 | 0.7 |
+| gated (paper) | no | 0.067 | 0.007 | 0.009 | 5.9 | 0.7 | 0.9 |
+| ungated (old) | yes | 0.142 | -0.008 | 0.028 | 7.7 | -0.6 | 2.4 |
+| ungated (old) | no | 0.121 | -0.003 | 0.024 | 6.6 | -0.2 | 2.3 |
+
+Verdict: null after controls. The earlier r = 0.166 claim is withdrawn.
+
+### 10b. Frame ablation, paper pipeline and FITTED params (`esm_frame_ablation.py`)
+Held-out R2 (5-fold participant CV, fold SD), see reviews/esm_frame_ablation.md for all rows and CIs.
+
+| sample | h | best baseline | full (gated) | ungated | clamp PRESENT | clamp FUTURE | channels only |
+|---|---|---:|---:|---:|---:|---:|---:|
+| Geschwind | 1 | 0.090 | 0.193 (.03) | 0.194 | 0.194 | 0.195 | 0.119 |
+| Geschwind | 2 | 0.274 | 0.299 (.03) | 0.301 | 0.300 | 0.304 | 0.281 |
+| Geschwind | 3 | 0.097 | 0.167 (.03) | 0.171 | 0.168 | 0.177 | 0.114 |
+| osf_83cfk | 1 | 0.475 | 0.485 (.07) | 0.485 | 0.485 | 0.487 | 0.501 |
+| osf_83cfk | 2 | 0.335 | 0.373 (.08) | 0.375 | 0.373 | 0.376 | 0.369 |
+| osf_83cfk | 3 | 0.274 | 0.316 (.08) | 0.319 | 0.316 | 0.321 | 0.311 |
+
+Participant-bootstrap 95% CI, full minus best baseline: Geschwind h1 [+.089,+.118], h2 [+.011,+.038],
+h3 [+.056,+.084]; osf h1 [-.001,+.023], h2 [+.025,+.051], h3 [+.027,+.056].
+Full minus ungated: within 0.005 everywhere. The frame does not carry the prediction.
+
+### 10c. Regret rework (`regret_model_fit.py`)
+After-loss switching, foregone better vs same (paired t over subjects); held-out NLL/trial.
+
+| dataset | human | factual | cf-value | regret bias |
+|---|---|---|---|---|
+| Sugawara n=143 | .458/.325 (+.133, t 10.4) | .479/.426 (+.053) NLL .602 | .511/.418 (+.093) NLL .617 | .501/.425 (+.077) NLL .603 |
+| Palminteri n=20 | .429/.161 (+.268, t 7.3) | .394/.301 (+.093) NLL .354 | .444/.281 (+.163) NLL .368 | .467/.297 (+.170) NLL .365 |
+
+### 10d. Simulation headline numbers under gating (`run.py`, seed 42; `diathesis_seeds.py`, 8 seeds)
+RECALL healthy 0.44 vs impaired 0.00 (FEEL 0.18 vs 0.68); policy entropy impaired 0.255 vs healthy 0.217.
+Stressed frame (P, Pr, F) = (0.16, 0.40, 0.44) vs healthy (0.28, 0.51, 0.20); ABSTRACT 0.40 vs 0.03; v_reward -0.15 vs +0.04.
+Diathesis: healthy_calm 7.48 +/- 0.00, healthy_stress 7.36 +/- 0.09 (0/8 below knee), vulnerable_calm 5.13 +/- 0.56 (0/8), vulnerable_stress 1.33 +/- 0.33 (8/8).
+
+### 10e. Sensitivity (`sensitivity_bframe.py`)
+See reviews/sensitivity_results.md (appended below when the sweep finished).

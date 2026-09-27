@@ -34,8 +34,12 @@ as the affective charge of policy revision \citep{hesp2021deeply}. Yet each
 alone is \emph{insufficient}: none spans the full temporal range, unifies these
 quantities into a taxonomy of emotion, or models how an agent actively selects the
 temporal horizon that dominates its own affect. We develop a single factored generative
-model in which a hidden \emph{temporal-frame} state (past/present/future)
-redistributes precision across horizons, so that framing emerges from expected-free-energy minimisation. We motivate the architecture
+architecture in which a hidden \emph{temporal-frame} state (past/present/future)
+sets the precision of the three channels and of the horizon terms of expected free
+energy, so that the inferred frame changes both what the agent feels and how it scores
+its next action. The unification is structural: one architecture with shared channel
+definitions, instantiated with a task-specific generative model and parameters fit per
+dataset, not a single jointly fitted model. We motivate the architecture
 from the psychology of mental time travel, the graded, cost-bounded regulation
 of how deeply memories and plans are unrolled, and show that a single
 \emph{depth regulator} with two temporal faces reproduces the classical split
@@ -44,23 +48,28 @@ between rumination (past-directed) and worry (future-directed). Affect is a
 are general operators on its inference dynamics. Empirically, driven through real experience-sampling sequences from two independent
 samples, the full model predicts next-moment affect out of sample better than linear
 autoregressive baselines, roughly doubling one-step skill where affect carries volatile
-dynamics (held-out $R^2=0.19$ vs $0.09$), the out-of-sample lead holding on a second,
-independent sample, and an inertia ablation shows the gain comes from the model's own
-forward temporal dynamics rather than a persistence prior. On a static gamble it recovers the standard happiness equation
-($n=14{,}803$ held out) where each predecessor channel alone falls short, reaching that
-ceiling without injecting expected value as a regressor (the forward/expected-free-energy
-channel supplies it by construction, a $+30\%$ gain over a reward-prediction-error
-channel). The same integration then supports capabilities the single-channel accounts
-lack: a latent temporal-frame state that tracks an independently measured symptom it is
-never shown ($r=0.17$); counterfactual emotions with a behavioural signature a
-reward-only model cannot produce (regret drives choice-switching over and above one's
-own outcome, $t=10.4$, replicated on a second dataset); and a mood layer whose
-diathesis-stress prediction holds in independent data, where a baseline
-vulnerability trait both lowers mood and amplifies affective stress-reactivity (the
-vulnerability$\times$stress interaction, $t=4.2$), the same conjunction that in
-simulation collapses into a self-sustaining low-mood attractor. Throughout we separate
-predictive claims (the channel integration) from generative ones (counterfactual and
-hedonic-asymmetry mechanisms).
+dynamics (held-out $R^2=0.19$ vs $0.09$, participant-bootstrap CI on the difference
+$[0.09,0.12]$); on a second, independent sample the lead does not reverse (ahead at
+two and three steps, parity at one). Ablations locate the gain in the model's valence
+transition dynamics: it survives removing the persistence prior, and it is unchanged
+when the temporal frame is made inert or clamped, so the frame's causal role is
+established in the simulated phenotypes (recall collapse, future fixation under stress,
+a diathesis-stress mood attractor, all robust across a sweep of the hand-set
+constants) rather than in affect prediction. On a static gamble the readout recovers
+the standard happiness equation ($n=14{,}803$ held out) where each predecessor channel
+alone falls short, reaching that level without injecting expected value as a regressor
+(the forward channel supplies it by construction, a $+30\%$ gain over a
+reward-prediction-error channel). A counterfactual regret term reproduces part of the
+human tendency to switch after a loss when the foregone option was better
+($t=10.4$, replicated on a second dataset): a factual learner generates less than half
+of that contrast, counterfactual mechanisms most of it, at no gain in held-out choice
+likelihood. A mood layer's diathesis-stress prediction holds in independent data,
+where a baseline vulnerability trait both lowers mood and amplifies affective
+stress-reactivity (interaction $t=4.2$), the same conjunction that in simulation
+collapses into a self-sustaining low-mood attractor. An earlier claim that the latent
+frame tracks an unshown worry item is withdrawn: the item was in the input, and the
+association is null after controls. Throughout we separate predictive claims from
+generative ones.
 \end{abstract}
 
 \tableofcontents
@@ -168,7 +177,7 @@ failure mode of the shallow setting is \emph{overgeneral memory}
 is answered from the kind of person one takes oneself to be, not from an episode.
 This fixes what the past-directed operator of \S\ref{sec:model} must do. There the
 RECALL action pulls represented valence toward an identity-anchored target whose sign
-is set by the agent's positive-belief precision ($\pi_{\text{pos}}$, the confidence of
+is set by the agent's positive-belief precision ($\rho_{\text{pos}}$, the confidence of
 the slow mood belief that outcomes will be favourable; formalised in
 \S\ref{sec:model}), so a coarse, negatively biased self
 answers a cue with overgeneral, negatively toned material, the failure mode just
@@ -310,9 +319,9 @@ actions realise the depth regulator:
 \begin{description}
 \item[RECALL] assigns $70\%$ self-transition to \textsc{past}; $\mathbf B_v^{\textsc{recall}}$
 pulls valence toward a \emph{bidirectional} target $v_{\text{recall}}=0.2+0.6\alpha$
-with $\alpha=\sigma(\pi_{\text{pos}}-\theta)$, so high positive-belief precision
-$\pi_{\text{pos}}$ recalls a positive past (narrative stabilisation) and low
-$\pi_{\text{pos}}$ a negative one (rumination). It is the computational realisation of
+with $\alpha=\sigma(\rho_{\text{pos}}-\theta)$, so high positive-belief precision
+$\rho_{\text{pos}}$ recalls a positive past (narrative stabilisation) and low
+$\rho_{\text{pos}}$ a negative one (rumination). It is the computational realisation of
 \emph{shallow}, identity-anchored retrieval (\S\ref{sec:regulator}).
 \item[ENGAGE] assigns $75\%$ to \textsc{present}, maintaining precision on current
 sensory input through perception--action coupling.
@@ -336,6 +345,56 @@ the logistic function and $\theta=2$ the precision threshold; the exact frame- a
 valence-transition entries, the channel temperatures $\tau_{\text{model}},
 \tau_{\text{reward}}, \tau_{\text{action}}$, and the mood-layer constants are given in
 the supplementary implementation (\texttt{generative\_model.py}, \texttt{agent.py}).
+The self-transition entries above ($0.70$, $0.75$, $0.90$, $0.80$) and the valence pull
+weights are set by hand. \S\ref{sec:sensitivity} sweeps them and reports which
+qualitative results survive.
+
+\subsection{The generative model in full, and where the frame enters}\label{sec:fullmodel}
+The likelihoods factorise as $p(o_{\text{ext}}\mid v,e)$, $p(o_{\text{int}}\mid e)$ and
+$p(o_{\text{val}}\mid v)$. None depends on $f$: the frame changes no predicted
+observation directly, which is why it cannot be recovered from a single affect reading
+(\S\ref{sec:orientation}). Transitions are $\mathbf B_a=\mathbf B_v^{(a)}\otimes\mathbf
+B_e^{(a)}\otimes\mathbf B_f^{(a)}$, preferences $C_m$ are over observations, and the
+prior $D(v,e,f)\propto e^{\rho_{\text{pos}}(v_n-0.5)}\,e^{-3(e_n-0.7)^2}\,[0.2,0.6,0.2]_f$
+encodes positive self-belief precision $\rho_{\text{pos}}$ (written
+\texttt{pi\_pos} in the code and figure axes). Beliefs update as
+$q(s_t)\propto \mathbf B_{a_{t-1}}q(s_{t-1})\prod_m p(o_{m,t}\mid s_t)$.
+
+The frame enters through the posterior marginal $q(f)$, which sets three
+\emph{horizon precisions}
+\begin{equation}
+w_c \;=\; 1+g\,\big(3\,q(f{=}c)-1\big),\qquad c\in\{\textsc{past},\textsc{present},\textsc{future}\},
+\label{eq:frameweights}
+\end{equation}
+which sum to $3$ for every $q(f)$ and reduce to $(1,1,1)$ at gain $g=0$. They weight
+the affective channels in the readout,
+$V=\tanh(w_{\textsc{past}}v_{\text{model}}+w_{\textsc{present}}v_{\text{reward}}+w_{\textsc{future}}v_{\text{action}})$,
+and the horizon terms of the expected free energy that scores each action,
+\begin{equation}
+G(a)=w_{\textsc{present}}\,G_1(a)\;+\;w_{\textsc{future}}\,\delta\sum_{a'}\pi'(a'\mid a)\,G_1(a'\mid a)\;+\;w_{\textsc{past}}\,D_{\mathrm{KL}}\!\big[q(s_{t+1}\mid a)\,\|\,D\big],
+\label{eq:gatedefe}
+\end{equation}
+with $G_1$ the one-step risk plus ambiguity of \S\ref{sec:free-energy}, $\delta=0.75$
+the discount on a one-step counterfactual rollout $\pi'$ (the roads not taken), and the
+last term the divergence of the predicted next state from the identity prior, the
+retrospective cost a past-oriented agent pays for leaving its established
+self-narrative. Policies follow $\ln\pi(a)=-\gamma G(a)+E_a$. So a future-dominant
+posterior deepens prospection and amplifies the forward channel, a present-dominant one
+weights immediate risk and reward prediction error, and a past-dominant one weights
+narrative consistency and the backward channel. Framing actions move $q(f)$ through
+$\mathbf B_f^{(a)}$, and $q(f)$ in turn changes which horizon the next action is
+scored on: this is the feedback loop between inferred frame and policy evaluation.
+The gain is $g=1$ throughout; $g=0$ is the ablation in which the frame is inferred but
+gates nothing, which was the model in an earlier version of this paper, where the
+frame was an action-conditioned label without a causal role (a point we owe to the
+AAAI-27 reviewers).
+
+At the slow timescale, the mood layer holds a categorical posterior $q(m)$ over
+discretised values of $\rho_{\text{pos}}$, updated every $T_{\text{mood}}=50$ steps
+from the mean believed valence $\bar v$ over the window,
+$q(m)\propto \mathcal N(\bar v;\,0.5+0.02(m-\theta),\,0.06^2)\;[\mathbf B_{\text{mood}}q(m)]$,
+with $\rho_{\text{pos}}\leftarrow\mathbb E_{q(m)}[m]$ then rebuilding the valence
+transitions. Neutral valence is anchored to the rumination knee $\theta$.
 
 \subsection{Extensions and the mood layer}
 Two extensions capture affective pathology. \emph{Asymmetric hedonic sensitivity}
@@ -345,7 +404,7 @@ reward and punishment processing \citep{eshel2010reward,pizzagalli2014depression
 \emph{Habit priors} add an additive log-prior $\mathbf E$ over policies
 \citep{dacosta2020active}, so $\ln\pi(a)=-\gamma G(a)+E_a$, modelling EFE-suboptimal
 habitual tendencies such as ruminative fixation \citep{watkins2008constructive}. A
-hierarchical \emph{mood layer} (M5) infers $\pi_{\text{pos}}$ over slow timescales as
+hierarchical \emph{mood layer} (M5) infers $\rho_{\text{pos}}$ over slow timescales as
 a categorical POMDP driven by accumulated believed-valence relative to neutral
 \citep{eldar2016mood}, separating within-trial emotion from cross-trial mood
 \citep{hesp2021deeply} and producing a self-reinforcing low-mood attractor under
@@ -438,6 +497,25 @@ This grounds the temporal axis of appraisal theory
 \citep{smith1985patterns,ortony1988cognitive} in a formal distinction rather than
 folk labels.
 
+The taxonomy is more useful as a set of discriminating predictions than as a list of
+labels, so we state the ones the model commits to. \emph{Relief versus
+disappointment} are transitional: both require a prior forward expectation and a
+present outcome, so both should vanish when the forward channel is silenced (a task
+with no policy revision), whereas joy and anger, present-channel emotions, should
+not. \emph{Regret versus disappointment} separate on the counterfactual: regret
+requires a foregone alternative that was better and should appear only under complete
+feedback, disappointment only needs an outcome below expectation and should appear
+under partial feedback too (\S\ref{sec:counterfactual} tests the regret half of this
+on choice data). \emph{Anxiety versus fear} separate on the frame: with the same
+forward channel value, a future-dominant posterior $q(f)$ should amplify the
+affective charge (Eq.~\ref{eq:frameweights}) and lengthen its persistence, so
+anxiety is fear under future fixation, which is the mechanism behind the stressed
+phenotype of \S\ref{sec:dynamics}. \emph{Pride versus joy} separate on the backward
+channel: pride requires that the outcome improved model fit relative to a
+self-relevant prior, joy does not. Each of these is a within-person contrast a
+suitably designed task can test, and each names the channel or frame manipulation that
+should abolish it.
+
 \section{Prior models are special cases}\label{sec:predecessors}
 Figure~\ref{fig:architecture} shows the architecture as a stack of layers and where
 the prior models sit inside it. A task-specific generative model sits at the base:
@@ -498,7 +576,7 @@ sharpens precision on the corrective trajectory. Under \emph{self-amplification}
 pathological. Framing locks into a single mode; precision on that mode's errors
 intensifies, and the agent cannot update away. We illustrate the dynamics across three
 parameter phenotypes used in Figure~\ref{fig:framing}: a \emph{healthy} agent (high
-$\pi_{\text{pos}}$, intact interoception), a \emph{depressive} one (low $\pi_{\text{pos}}$,
+$\rho_{\text{pos}}$, intact interoception), a \emph{depressive} one (low $\rho_{\text{pos}}$,
 blunted reward sensitivity), and a \emph{manic} one (low interoceptive precision and
 disinhibited forward framing).
 
@@ -506,14 +584,16 @@ disinhibited forward framing).
 Past-oriented framing is preparatory: RECALL stabilises beliefs by pulling toward the
 prior, lowering VFE and making ENGAGE more competitive, so a RECALL-to-ENGAGE
 pipeline emerges in healthy agents (Figure~\ref{fig:framing}d,e). This capacity is
-constrained by feedback. When $\pi_{\text{pos}}$ is low, RECALL fails at two coupled
+constrained by feedback. When $\rho_{\text{pos}}$ is low, RECALL fails at two coupled
 levels: the mechanism itself is impaired ($\alpha\!\approx\!0.14$, barely pulling
 toward the prior) and its deployment is suppressed (it becomes EFE-uncompetitive).
 Figure~\ref{fig:feedback} contrasts a healthy and a recall-impaired agent differing
-only in $\pi_{\text{pos}}$: RECALL utilisation collapses from $26\%$ to $<1\%$, with
-compensatory FEEL, ENGAGE, and ABSTRACT. This is the computational form of
-overgeneral memory \citep{williams2007autobiographical}: cognition migrates to
-representations that are abstract without being self-congruent.
+only in $\rho_{\text{pos}}$: RECALL utilisation collapses from $44\%$ to $0\%$, with
+the freed policy mass going almost entirely to FEEL ($18\%$ to $68\%$), the
+interoceptive null action. This is the computational form of overgeneral memory
+\citep{williams2007autobiographical}: with identity-anchored retrieval unavailable,
+the agent falls back on monitoring its body state rather than on constructive
+temporal processing.
 
 \begin{figure}[htbp]
 \centering
@@ -533,9 +613,13 @@ burst; ABSTRACT is the low-cost operator that does most forward framing.}
 \centering
 \includegraphics[width=\textwidth]{figures/fig10_feedback_reliance.png}
 \caption{\textbf{Feedback reliance under recall impairment.} Profiles share all
-parameters except $\pi_{\text{pos}}$ (5.0 vs 0.2). (a) RECALL drops from $26\%$ to
-$<1\%$, with compensatory FEEL/ENGAGE/ABSTRACT. (b) Valence trajectories
-lower under impairment. (c) Policy entropy: the impaired agent is less decisive.}
+parameters except $\rho_{\text{pos}}$ (5.0 vs 0.2); frame-gated model. (a) RECALL
+drops from $44\%$ to $0\%$, with the mass moving to FEEL. (b) Valence trajectories
+lower under impairment. (c) Normalised policy entropy (smoothed): the impaired agent
+runs slightly higher for most of the episode, so its policy is marginally less
+decisive; the difference is small (\S\ref{sec:sensitivity} reports it across seeds),
+and in the frame-inert version of the model its sign was reversed, a caption error in
+an earlier version of this paper that the AAAI-27 reviewers caught.}
 \label{fig:feedback}
 \end{figure}
 
@@ -543,23 +627,33 @@ lower under impairment. (c) Policy entropy: the impaired agent is less decisive.
 Chronic stress realises the double bind of \S\ref{sec:regulator}. Affect turns
 negative but construal stays coarse, so neither pathway to policy selection delivers.
 A stressed profile (very high volatility, amplified reward sensitivity, stress-impaired
-interoception, reduced $\pi_{\text{pos}}$) shows future-dominated fixation, dominant
-\textsc{future} frame belief ($0.57$ vs $0.32$ healthy), depleted \textsc{present}
-($0.32$ vs $0.46$), forward-framing dominance (ABSTRACT, the low-cost prospection
-operator, taken on $66\%$ of steps), and negative reward valence
-($-0.35$ vs $+0.06$ healthy) from \emph{frustrated forward projection}: abstract
-prospection commits to above-neutral predictions that a volatile world falsifies
-(Figure~\ref{fig:stress}). The direction of these effects holds across seeds.
+interoception, reduced $\rho_{\text{pos}}$) shows future fixation: \textsc{future}
+frame belief $0.44$ against $0.20$ for the healthy agent, \textsc{present} depleted
+($0.40$ vs $0.51$), ABSTRACT, the low-cost prospection operator, taken on $40\%$ of
+steps against $3\%$, and negative reward valence ($-0.15$ vs $+0.04$) from
+\emph{frustrated forward projection}: abstract prospection commits to above-neutral
+predictions that a volatile world falsifies (Figure~\ref{fig:stress}). The
+\textsc{past} frame stays the least probable throughout ($0.16$); the stressed agent
+does not transition into past-oriented rumination within the episode. The direction
+of these effects holds across seeds and across the constant sweep of
+\S\ref{sec:sensitivity}. The stressed profile differs from the healthy one on four
+parameters at once, so this is a phenotype, not a one-factor manipulation; the
+sweep in \S\ref{sec:sensitivity} additionally varies each of the four from the
+healthy profile alone.
 
 At the slow mood timescale, the M5 layer accumulates believed-valence evidence, so
-persistently below-neutral affect drives positive-belief precision $\pi_{\text{pos}}$
-below the rumination knee, where RECALL turns to rumination and sustains the low-mood
-state. This produces a \emph{diathesis-stress} pattern (Figure~\ref{fig:mood}). Crossing vulnerability (low $\pi_{\text{pos}}$, blunted reward
+persistently below-neutral affect drives positive-belief precision $\rho_{\text{pos}}$
+below the rumination knee, where the RECALL target turns negative. The transition from
+future-directed worry to past-directed rumination is therefore a prediction of the
+mood layer over months, not something the within-episode simulation of
+Figure~\ref{fig:stress} shows; we present it as a model-generated hypothesis awaiting
+longitudinal data. What the mood layer does produce in simulation is a
+\emph{diathesis-stress} pattern (Figure~\ref{fig:mood}). Crossing vulnerability (low $\rho_{\text{pos}}$, blunted reward
 sensitivity, weak interoception) against chronic stress (high volatility) in a $2\times2$
 design, only the conjunction collapses. Across eight seeds a healthy agent stays high
-even under chronic stress (final $\pi_{\text{pos}}=5.2\pm0.7$, depressed in $0/8$),
-vulnerability alone recovers ($4.2\pm1.0$, $0/8$), and only the vulnerable agent under
-stress falls into a self-sustaining depressive attractor ($0.8\pm0.2$, $8/8$ below the
+even under chronic stress (final $\rho_{\text{pos}}=7.4\pm0.1$, depressed in $0/8$),
+vulnerability alone recovers ($5.1\pm0.6$, $0/8$), and only the vulnerable agent under
+stress falls into a self-sustaining depressive attractor ($1.3\pm0.3$, $8/8$ below the
 knee). Neither factor alone suffices, matching the diathesis-stress account of
 depression \citep{monroe1991diathesis} and the resilience of most people to stress.
 
@@ -580,10 +674,13 @@ prediction error, a test that awaits longer longitudinal data.
 \begin{figure}[htbp]
 \centering
 \includegraphics[width=\textwidth]{figures/fig12_chronic_stress.png}
-\caption{\textbf{Chronic stress as maladaptive temporal fixation.} Stressed vs healthy.
-(a) Frame beliefs: dominant \textsc{future}, depleted \textsc{present}. (b) Backward
-valence more variable under high volatility. (c) Channel decomposition: negative
-reward valence drives composite valence down via frustrated forward projection.}
+\caption{\textbf{Chronic stress as maladaptive temporal fixation.} Stressed vs healthy,
+frame-gated model. (a) Frame beliefs: the stressed agent's \textsc{future} belief
+(solid red) dominates and its \textsc{past} belief (dashed) stays lowest; there is no
+transition to past framing within the episode. (b) Backward valence, similar in both
+agents. (c) Channel decomposition for the stressed agent: the present channel (reward
+prediction error) is negative for most of the run and drives the composite down; the
+forward channel stays mildly positive (policy revision under volatility).}
 \label{fig:stress}
 \end{figure}
 
@@ -591,8 +688,8 @@ reward valence drives composite valence down via frustrated forward projection.}
 \centering
 \includegraphics[width=\textwidth]{figures/fig14_stress_decay.png}
 \caption{\textbf{Diathesis-stress in the M5 mood layer.} A $2\times2$ design crosses
-vulnerability (low $\pi_{\text{pos}}$, blunted reward sensitivity, weak interoception)
-with chronic stress (high volatility). (a) Mood ($\mathbb{E}[\pi_{\text{pos}}]$)
+vulnerability (low $\rho_{\text{pos}}$, blunted reward sensitivity, weak interoception)
+with chronic stress (high volatility). (a) Mood ($\mathbb{E}[\rho_{\text{pos}}]$)
 trajectories; (b) believed valence, the mood evidence, relative to neutral (dotted).
 (c) Final mood by condition: only vulnerability $\times$ stress crosses the rumination
 knee ($\theta=2$). (d) The vulnerable-under-stress mood posterior collapses to the low
@@ -602,33 +699,88 @@ $T=3000$.}
 \label{fig:mood}
 \end{figure}
 
+\subsection{Sensitivity to the hand-set constants}\label{sec:sensitivity}
+SENSITIVITY_PLACEHOLDER
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\textwidth]{figures/fig_sensitivity.png}
+\caption{\textbf{Sensitivity sweep.} Left three panels: frame stickiness $s$ (the
+self-transition entry of each framing action's target frame, replacing
+$0.70/0.75/0.90/0.80$) against the valence pull-weight scale $k$ (FUTURATE $0.5k$,
+ABSTRACT $0.65k$), four seeds per cell, black square at the paper's defaults. Cells show
+the RECALL collapse (healthy minus impaired RECALL proportion), future fixation
+(stressed minus healthy $q(\textsc{future})$), and the fraction of seeds in which the
+diathesis-stress result holds (vulnerable-under-stress below the knee, healthy-under-stress
+above). Right: the same three effects against the frame gain $g$, with $g=0$ the
+frame-inert model. Script \texttt{sensitivity\_bframe.py}.}
+\label{fig:sensitivity}
+\end{figure}
+
 \section{Counterfactual emotions (a generative mechanism)}\label{sec:counterfactual}
 Regret and relief require comparing what happened with what \emph{would} have
 happened. Adapting the counterfactual free-energy machinery of
 \citet{hesp2020sophisticated}, we write
 $\text{Regret}=F_{\text{actual}}-\min_{\pi'}F_{\text{counterfactual}}(\pi')$.
 Computing $F_{\text{counterfactual}}$ requires running
-the generative model offline, exactly what temporal framing does. This mechanism makes
-a behavioural prediction that a reward-only model cannot. Across 143 participants, a
-better \emph{foregone} outcome drives switching on the next choice over and above one's
-own outcome ($t=10.4$; $P(\text{switch}\mid\text{regret})=0.45$ vs
-$P(\text{switch}\mid\text{relief})=0.26$; Figure~\ref{fig:cf}), a dissociation a
-factual (no-counterfactual) model has no way to produce. The same switching signature
-replicates on a second complete-feedback dataset \citep{palminteri2017confirmation}
-($n=20$). What the counterfactual term
-does \emph{not} do is improve the prediction of affect magnitude or choice likelihood:
-on complete-feedback choice data and on large-scale affect data it is redundant with
-the reward-prediction signal (\S\ref{sec:empirical}). We therefore class it as a
-grounded generative mechanism with a specific behavioural signature, not a general
-predictive-fit improver.
+the generative model offline, exactly what temporal framing does. Its behavioural
+signature is switching: in complete-feedback choice tasks the outcomes are binary, so
+``regret'' (foregone better than obtained) is confounded with ``obtained a loss'', and
+the honest contrast is at fixed obtained outcome. After a loss, participants switch on
+the next visit to the same state more often when the foregone option was better than
+when it was equally bad ($0.46$ vs $0.33$, paired $t=10.4$ over $143$ participants;
+Figure~\ref{fig:cf}); the same contrast replicates on a second complete-feedback
+dataset \citep{palminteri2017confirmation} ($0.43$ vs $0.16$, $t=7.3$, $n=20$).
+
+We then asked what fitted models generate on the same trials. A factual Q-learner
+(chosen option only) produces part of the contrast without any counterfactual input,
+$+0.05$ against the human $+0.13$, because states in which the other option is good
+are states in which its learned value is higher. Adding the regret signal as a policy
+bias (regret pushes the next choice away from the previously chosen option, the
+free-energy comparison wired into choice) raises the model-generated contrast to
+$+0.08$; a counterfactual value learner that updates the foregone option raises it to
+$+0.09$ (Table~\ref{tab:regret}). On the second dataset the ordering is the same
+($+0.09$ factual, $+0.17$ regret bias, $+0.16$ counterfactual value, human $+0.27$).
+Neither counterfactual mechanism improves held-out choice likelihood over the factual
+learner. So the switching data are evidence that foregone outcomes enter choice, which
+a factual model under-produces, and not evidence that discriminates our free-energy
+construction of regret from counterfactual value learning. We class the term as a
+grounded generative mechanism whose specific form remains to be tested, not as a
+predictive component.
+
+\begin{table}[htbp]
+\centering\small
+\caption{\textbf{Counterfactual switching, data and fitted models.} $P(\text{switch})$
+on the next visit to the same state after a loss, split by whether the foregone outcome
+was better or equally bad; paired $t$ over participants. Held-out NLL per trial: fit on
+the first $60\%$ of trials, scored on the last $40\%$. Script
+\texttt{regret\_model\_fit.py}.}
+\label{tab:regret}
+\begin{tabular}{llccc}
+\toprule
+Dataset & Source & foregone better / same & contrast ($t$) & held-out NLL \\
+\midrule
+Sugawara \& Katahira ($n{=}143$) & human & 0.46 / 0.33 & $+0.13$ (10.4) & \\
+ & factual Q-learner & 0.48 / 0.43 & $+0.05$ (12.3) & 0.602 \\
+ & counterfactual value & 0.51 / 0.42 & $+0.09$ (12.4) & 0.617 \\
+ & regret bias (ours) & 0.50 / 0.43 & $+0.08$ (9.3) & 0.603 \\
+\midrule
+Palminteri et al.\ ($n{=}20$) & human & 0.43 / 0.16 & $+0.27$ (7.3) & \\
+ & factual Q-learner & 0.39 / 0.30 & $+0.09$ (6.1) & 0.354 \\
+ & counterfactual value & 0.44 / 0.28 & $+0.16$ (8.4) & 0.368 \\
+ & regret bias (ours) & 0.47 / 0.30 & $+0.17$ (8.6) & 0.365 \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 \begin{figure}[htbp]
 \centering
 \includegraphics[width=0.5\textwidth]{figures/fig_counterfactual_signature.png}
-\caption{\textbf{Counterfactual emotion drives behaviour.} People switch $\sim$1.7$\times$
-more after regret than relief (\citealp{sugawara2021dissociation}, $n=143$), a signature a
-factual model cannot generate. This validates the mechanism as the generator of
-regret/relief, independent of its (null) contribution to prediction.}
+\caption{\textbf{Counterfactual switching at fixed obtained outcome.} After a loss,
+people switch more when the foregone option was better than when it was equally bad
+(\citealp{sugawara2021dissociation}, $n=143$). The same contrast generated by three
+fitted models on the same trials: a factual learner produces less than half of it, the
+regret-bias and counterfactual-value learners most of it (Table~\ref{tab:regret}).}
 \label{fig:cf}
 \end{figure}
 
@@ -718,7 +870,7 @@ participants, $96{,}624$ ratings), no expected value injected as a regressor. On
 single-shot gamble the backward (rate-of-change) and forward (policy-revision) channels
 have no temporal dynamics to track, so their low scores are category-appropriate, not
 defeats; the informative comparison is the present channel alone ($0.111$) against the
-integrated readout ($0.144$), which reaches the reference ceiling.}
+integrated readout ($0.144$), which reaches the reference model.}
 \label{tab:headtohead}
 \begin{tabular}{llc}
 \toprule
@@ -740,7 +892,7 @@ Happiness equation \citep{rutledge2014} & CR$+$EV$+$RPE (reference) & 0.146 \\
 \caption{\textbf{A general affect-readout framework.} (A) Channel decomposition (Rutledge GBE): each predecessor reconstructed as one channel over the same gamble
 task-model; the present channel (Pattisapu 0.111) is the informative single-channel
 comparison, the backward and forward channels being category-mismatched on a static
-gamble, while integration reaches the reference ceiling (0.144 vs happiness equation
+gamble, while integration reaches the reference model (0.144 vs happiness equation
 0.146, dashed). (B) On the remitted-depression ESM
 sample, the full model reaches $2.2\times$ the held-out $R^2$ of the best
 linear/autoregressive baseline at one step. (C) On an independent reliability ESM
@@ -751,22 +903,34 @@ All held out across participants; Table~\ref{tab:esm}.}
 \end{figure}
 
 \subsection{Extension: the full model predicts affect dynamics, on two samples}
-Where the task has temporal structure, the temporal-frame factor earns its keep, and
-we report the advantage on two independent experience-sampling samples rather than
-one. In a remitted-depression ESM sample \citep{bringmann2013,geschwind2011} ($129$
+Where the task has temporal structure, the model's forward dynamics earn their keep,
+and we report the advantage on two independent experience-sampling samples rather
+than one. (Which component carries the advantage is the subject of the ablation in
+\S\ref{sec:esm-ablation}; the answer is the valence transition dynamics, not the
+frame.) In a remitted-depression ESM sample \citep{bringmann2013,geschwind2011} ($129$
 participants held out; global parameters fitted on training participants and evaluated
 on unseen ones), the full model predicts next-moment valence with held-out $R^2=0.19$
 at one step versus $0.09$ for the best linear/autoregressive and event-regression
 baselines, roughly double the explained variance at this horizon
 (Figure~\ref{fig:advantage}B), with smaller leads at two and three steps. In a second,
 independent reliability ESM sample (\texttt{osf.io/83cfk}, $91$ participants, no event
-or worry items, so the model runs on valence alone), the model again leads at every
-horizon, but the margins are modest and the one-step gap is near parity
-(Figure~\ref{fig:advantage}C, Table~\ref{tab:esm}). The two samples differ in exactly
+or worry items, so the model runs on valence alone), the lead does not reverse: the
+model is ahead at two and three steps (participant-bootstrap $95\%$ CIs on the $R^2$
+difference $[+0.03,+0.05]$ and $[+0.03,+0.06]$) and at parity at one step ($+0.01$,
+CI $[-0.00,+0.02]$; Figure~\ref{fig:advantage}C, Table~\ref{tab:esm}). We do not
+call the one-step result a replication. The two samples differ in exactly
 the way the framework predicts matters: in the reliability sample affect is already
 highly persistent (baseline one-step $R^2=0.475$ versus $0.089$), leaving little
 non-trivial dynamics for temporal machinery to capture, whereas the clinical sample's
 more volatile affect is where the model helps most.
+
+The baselines are: naive persistence; iterated AR(1) ($a+bv_t$, applied $h$ times);
+direct $h$-step regression on $v_t$ (the strongest simple predictor at two and three
+steps); linear event ($a+bv_t+ce_t$) and asymmetric event ($a+bv_t+p\,[e_t]_+ +
+n\,[e_t]_-$), iterated with the mean event beyond the first step. The model's three
+global parameters ($\rho_{\text{pos}}$, valence inertia, $\omega_e$) were chosen on
+an $18$-point grid using training participants only; every predictor, model included,
+receives a train-fit affine calibration.
 
 Component ablations locate the source of the advantage. Driving the model on valence
 alone in the clinical sample changes almost nothing ($R^2=0.20$ at one step), so the
@@ -784,6 +948,50 @@ fixed optimistic target. We do not claim a head-to-head reimplementation of each
 predecessor here; the claim is that the integrated model outpredicts standard baselines
 where affect carries non-trivial dynamics, and single components are insufficient.
 
+\subsubsection{Frame ablation: the frame does not carry the prediction}\label{sec:esm-ablation}
+Table~\ref{tab:frameablation} isolates the temporal frame. We compare the frame-gated
+model with the frame-inert version ($g=0$), with the gated model whose gating
+posterior is clamped to one frame, and with a regression on the three readout channels
+plus $v_t$ with no state rollout, all on the same folds with participant-level
+bootstrap confidence intervals. The result is unambiguous. On both samples and at
+every horizon the gated, inert and clamped models are within $0.005$ of one another in
+held-out $R^2$, so the inferred frame contributes nothing measurable to out-of-sample
+affect prediction. The advantage over the linear baselines is carried by the valence
+transition dynamics (the policy-averaged $\mathbf B_v$ with inertia), which the
+channels-only regression lacks: on the clinical sample it trails the full model by
+$0.08$ at one step and $0.05$ at three. On the reliability sample the channels-only
+regression is in fact slightly ahead at one step. The frame's causal role in this
+paper is therefore established in the simulated phenotypes (\S\ref{sec:dynamics}),
+where it changes policy and affect, and not in the experience-sampling prediction,
+where the observation stream carries no orientation information for it to use.
+
+\begin{table}[htbp]
+\centering\small
+\caption{\textbf{Frame ablation on both ESM samples.} Held-out $R^2$ (mean over five
+participant folds, fold SD in parentheses), paper pipeline and fitted parameters. The
+last rows give participant-bootstrap $95\%$ CIs ($2{,}000$ resamples) for the full
+model minus the named comparator. Script \texttt{esm\_frame\_ablation.py}.}
+\label{tab:frameablation}
+\begin{tabular}{lcccccc}
+\toprule
+& \multicolumn{3}{c}{Remitted-depression ($n{=}129$)} & \multicolumn{3}{c}{Reliability ($n{=}91$)} \\
+Predictor & 1 step & 2 steps & 3 steps & 1 step & 2 steps & 3 steps \\
+\midrule
+best linear baseline & 0.090 (.03) & 0.274 (.03) & 0.097 (.03) & 0.475 (.07) & 0.335 (.08) & 0.274 (.07) \\
+channels only (no rollout) & 0.119 (.07) & 0.281 (.03) & 0.114 (.05) & 0.501 (.07) & 0.369 (.08) & 0.311 (.08) \\
+full model, frame-gated & 0.193 (.03) & 0.299 (.03) & 0.167 (.03) & 0.485 (.07) & 0.373 (.08) & 0.316 (.08) \\
+frame-inert ($g=0$) & 0.194 (.03) & 0.301 (.03) & 0.171 (.03) & 0.485 (.07) & 0.375 (.08) & 0.319 (.08) \\
+frame clamped \textsc{present} & 0.194 (.03) & 0.300 (.03) & 0.168 (.03) & 0.485 (.07) & 0.373 (.08) & 0.316 (.08) \\
+frame clamped \textsc{past} & 0.193 (.03) & 0.299 (.03) & 0.167 (.03) & 0.484 (.07) & 0.372 (.08) & 0.314 (.08) \\
+frame clamped \textsc{future} & 0.195 (.03) & 0.304 (.03) & 0.177 (.03) & 0.487 (.07) & 0.376 (.08) & 0.321 (.08) \\
+\midrule
+full $-$ best baseline, CI & $[.09,.12]$ & $[.01,.04]$ & $[.06,.08]$ & $[-.00,.02]$ & $[.03,.05]$ & $[.03,.06]$ \\
+full $-$ frame-inert, CI & $[-.001,-.000]$ & $[-.003,-.001]$ & $[-.006,-.003]$ & $[-.001,.000]$ & $[-.002,-.001]$ & $[-.004,-.002]$ \\
+full $-$ channels only, CI & $[.05,.13]$ & $[.01,.03]$ & $[.04,.08]$ & $[-.02,-.01]$ & $[-.01,.02]$ & $[-.01,.02]$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
 \begin{table}[htbp]
 \centering\small
 \caption{\textbf{Affect-dynamics prediction on two independent ESM samples.} Held-out
@@ -797,20 +1005,47 @@ valence alone there.}
 Sample & Predictor & 1 step & 2 steps & 3 steps \\
 \midrule
 Remitted-depression ($n{=}129$) & baseline & 0.089 & 0.274 & 0.097 \\
-\citep{bringmann2013,geschwind2011} & \textbf{full model} & \textbf{0.194} & \textbf{0.301} & \textbf{0.171} \\
+\citep{bringmann2013,geschwind2011} & \textbf{full model} & \textbf{0.193} & \textbf{0.299} & \textbf{0.167} \\
 \midrule
-Reliability ($n{=}91$) & baseline & 0.475 & 0.338 & 0.276 \\
-(\texttt{osf.io/83cfk}) & \textbf{full model} & \textbf{0.485} & \textbf{0.375} & \textbf{0.319} \\
+Reliability ($n{=}91$) & baseline & 0.475 & 0.335 & 0.274 \\
+(\texttt{osf.io/83cfk}) & \textbf{full model} & \textbf{0.485} & \textbf{0.373} & \textbf{0.316} \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-\subsection{Non-circular latent-state validation}
-Driven only by valence and event inputs, the model's posterior \emph{future-frame}
-belief covaries with an independently measured worry item it is never shown ($r=0.166$,
-$n=11{,}712$). We read this as evidence that the frame belief couples to a
-symptom-relevant affective signal, not that it recovers reported temporal orientation
-as such; the direct orientation test below makes that distinction concrete.
+\subsection{Latent frame and worry: a null after controls}\label{sec:worry}
+An earlier version of this paper reported that the posterior future-frame belief
+covaries with a worry item the model ``is never shown'' ($r=0.17$). That was wrong on
+both counts. The valence composite fed to the model (cheerful and relaxed minus
+worried, fearful and sad) contains the worry item, and the raw correlation is a
+between-person valence-level effect. Table~\ref{tab:worry} reports the analysis done
+properly: worry removed from the input, and the association tested after controlling
+for the model's own inputs (concurrent valence and event pleasantness), within person,
+and with participant-clustered standard errors. The adjusted and within-person
+associations are indistinguishable from zero for the revised model. We therefore make
+no claim that the latent frame tracks worry. What the frame does is shown in
+simulation (\S\ref{sec:dynamics}) and in the prediction ablation
+(\S\ref{sec:esm-ablation}); its recovery from affect alone is the identifiability
+limit discussed in \S\ref{sec:orientation}.
+
+\begin{table}[htbp]
+\centering\small
+\caption{\textbf{Future-frame posterior vs the worry item, Geschwind ESM}
+($n=11{,}712$ beeps, $129$ participants; script \texttt{frame\_worry\_multilevel.py}).
+Partial $r$ controls for concurrent valence and event pleasantness; $z$ is the
+standardised slope over its participant-clustered sandwich standard error.}
+\label{tab:worry}
+\begin{tabular}{llcccccc}
+\toprule
+Model & Worry in input & raw $r$ & partial $r$ & within-person $r$ & $z$ raw & $z$ adjusted & $z$ within \\
+\midrule
+frame-gated (this paper) & yes & 0.078 & 0.006 & 0.008 & 6.3 & 0.5 & 0.7 \\
+frame-gated (this paper) & no & 0.067 & 0.007 & 0.009 & 5.9 & 0.7 & 0.9 \\
+frame-inert (earlier version) & yes & 0.142 & $-0.008$ & 0.028 & 7.7 & $-0.6$ & 2.4 \\
+frame-inert (earlier version) & no & 0.121 & $-0.003$ & 0.024 & 6.6 & $-0.2$ & 2.3 \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 \subsection{Direct temporal-orientation test}\label{sec:orientation}
 The strongest test of the temporal-frame construct uses a dataset that labels the
@@ -861,7 +1096,9 @@ prediction.}
 Claim & Status & Evidence \\
 \midrule
 Multi-channel integration & predictive & recovers the happiness equation (Table~\ref{tab:headtohead}); outpredicts baselines on two ESM samples, $\sim$2$\times$ at one step where affect is volatile (Table~\ref{tab:esm}) \\
-Latent temporal-frame state & predictive & future-frame belief tracks an unshown worry item ($r=0.17$) \\
+Latent temporal-frame state (worry) & not supported & raw $r=0.07$ with worry, $\approx0$ after controlling for concurrent valence and events (Table~\ref{tab:worry}) \\
+Latent temporal-frame state (prediction) & see Table~\ref{tab:frameablation} & frame gating vs frame-inert and frame-clamped variants, participant-bootstrap CIs \\
+Frame-gated dynamics (phenotypes) & generative & RECALL collapse under low $\rho_{\text{pos}}$, future fixation under stress, diathesis-stress attractor (\S\ref{sec:dynamics}); robust across the constant sweep (\S\ref{sec:sensitivity}) \\
 Counterfactual emotion & generative & regret drives choice-switching ($t=10.4$); adds no choice or affect prediction \\
 Hedonic asymmetry ($c_{\text{pos}}\!\neq\!c_{\text{neg}}$) & generative & blunted Reward Positivity, self-reported anhedonia; not recoverable from choice \\
 \bottomrule
@@ -895,8 +1132,10 @@ The single move behind every result here is treating affect as a readout over a
 task-specific model rather than as a model in its own right. That move has an empirical
 consequence and a conceptual one. Empirically, the same three channels that recover the
 happiness equation on a static gamble gain predictive power once the task carries
-temporal structure, because only then does the temporal-frame factor have work to do.
-Conceptually, prior single-channel accounts stop being rivals and become limiting
+temporal structure, because only then do the valence transition dynamics have work to
+do; the temporal frame, by contrast, earns its place in the simulated phenotypes and
+not in the prediction (\S\ref{sec:esm-ablation}), which is what one expects when the
+observation stream carries no orientation information. Conceptually, prior single-channel accounts stop being rivals and become limiting
 cases: each is what our readout reduces to when its task offers no dimension for the
 other channels to read. Where a task lacks temporal structure the framework reduces to
 the task-appropriate reward-affect model.
@@ -920,19 +1159,30 @@ This is where the thin (affect signals free-energy trajectories) and thick (affe
 the enactive force directing attention across horizons) readings of emotion meet.
 
 \subsection{Limitations}
-Emotion-level policy selection is single-step \citep{friston2018deep}; the frame is
-categorical, not yet a continuous depth; the E-vector is fixed and not yet learned
-\citep{watkins2008constructive}; and the model is single-agent, with dyadic temporal
-co-regulation \citep{hinrichs2025temporal} left to future work. Empirically, the
-per-channel head-to-head is on one dataset (Rutledge) and awaits replication; the
-affect-dynamics advantage replicates across two ESM samples but with sample-dependent
-margins. The direct temporal-orientation test (\S\ref{sec:orientation}) validates the
-frame-to-affect coupling but also shows its two current limits: the model does not
-invert reported orientation from affect alone (it is not given orientation-carrying
-input), and precision gating attenuates rather than reverses the negativity of
-past-framing. Grounding the frame in an orientation-carrying observation channel, so
-the latent frame can be tested for recovery and not only coupling, is the most valuable
-next step.
+Emotion-level policy selection uses a one-step counterfactual rollout
+\citep{friston2018deep}; the frame is categorical, not yet a continuous depth; the
+E-vector is fixed and not yet learned \citep{watkins2008constructive}; and the model is
+single-agent, with dyadic temporal co-regulation \citep{hinrichs2025temporal} left to
+future work. The three valence channels are placed on a common scale by construction
+(each is a bounded transform of a free-energy quantity in nats, weighted by the frame
+precisions and then affinely calibrated per dataset), which is a modelling choice
+rather than a measurement model; a dataset with separate retrospective, present and
+prospective affect items would let the weights be estimated rather than set. The
+positive-belief precision $\rho_{\text{pos}}$ does three jobs (the identity prior, the
+RECALL and FUTURATE targets, and the mood-layer state), which is deliberate, one schema
+parameter in Beck's sense, but it means the low-mood attractor is built from that
+coupling; decoupling the three roles and showing which carries the attractor is an
+ablation we have not run. Empirically, the per-channel head-to-head is on one dataset
+(Rutledge) and awaits replication; the affect-dynamics advantage holds across two ESM
+samples with sample-dependent margins and, as \S\ref{sec:esm-ablation} shows, is not
+carried by the frame. The direct temporal-orientation test (\S\ref{sec:orientation})
+validates a frame-to-affect coupling but shows its limits: the model does not invert
+reported orientation from affect alone (it is not given orientation-carrying input),
+precision gating attenuates rather than reverses the negativity of past-framing, and
+the precision-gated FUTURATE operator was introduced after the failed
+future-optimism prediction and has not been tested on independent data. Grounding the
+frame in an orientation-carrying observation channel, so the latent frame can be tested
+for recovery and not only coupling, is the most valuable next step.
 
 \bibliographystyle{plainnat}
 \bibliography{references}

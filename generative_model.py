@@ -289,7 +289,8 @@ def B_valence(K, action, pi_pos, valence_inertia=0.0):
             target = (K - 1) * futurate_valence
             solution = _gaussian_col(K, target, 2.5)
             stay = _gaussian_col(K, v, 3.0)
-            B[:, v] = 0.5 * solution + 0.5 * stay
+            w = _pull_w(0.5)
+            B[:, v] = w * solution + (1.0 - w) * stay
 
         elif action == FEEL:
             neutral = (K - 1) / 2.0
@@ -311,7 +312,8 @@ def B_valence(K, action, pi_pos, valence_inertia=0.0):
             target_abstract = (K - 1) * abstract_valence
             pull = _gaussian_col(K, target_abstract, 3.0)
             stay = _gaussian_col(K, v, 5.0)
-            B[:, v] = 0.35 * stay + 0.65 * pull
+            w = _pull_w(0.65)
+            B[:, v] = (1.0 - w) * stay + w * pull
 
     inertia = float(np.clip(valence_inertia, 0.0, 0.95))
     if inertia > 0:
@@ -359,6 +361,23 @@ def B_energy(M, action):
     return B
 
 
+# Sensitivity-analysis overrides (revision 2026-09-27). None = paper defaults.
+# FRAME_STICKINESS replaces the target-frame self-transition entries
+# (RECALL->PAST 0.70, ENGAGE->PRESENT 0.75, FUTURATE->FUTURE 0.90,
+# ABSTRACT->FUTURE 0.80); the other two entries of that column are rescaled
+# to keep the column normalised. PULL_WEIGHT_SCALE multiplies the fixed
+# valence pull weights of FUTURATE (0.5) and ABSTRACT (0.65).
+FRAME_STICKINESS = None
+PULL_WEIGHT_SCALE = None
+_STICKY_TARGET = {RECALL: PAST, ENGAGE: PRESENT, FUTURATE: FUTURE, ABSTRACT: FUTURE}
+
+
+def _pull_w(w):
+    if PULL_WEIGHT_SCALE is None:
+        return w
+    return float(np.clip(w * PULL_WEIGHT_SCALE, 0.0, 1.0))
+
+
 def B_frame(action):
     """3 x 3 temporal-frame transition matrix."""
     matrices = {
@@ -394,6 +413,14 @@ def B_frame(action):
         ]),
     }
     B = matrices[action].copy()
+    if FRAME_STICKINESS is not None and action in _STICKY_TARGET:
+        f = _STICKY_TARGET[action]
+        col = B[:, f].copy()
+        others = [i for i in range(3) if i != f]
+        rest = col[others].sum()
+        col[f] = FRAME_STICKINESS
+        col[others] = (1.0 - FRAME_STICKINESS) * col[others] / max(rest, EPS)
+        B[:, f] = col
     B /= (B.sum(axis=0, keepdims=True) + EPS)
     return B
 
