@@ -60,6 +60,10 @@ HORIZONS = (1, 2, 3)
 # hedonic sensitivity; the SYMMETRIC ablation forces c_pos = c_neg.
 FULL = dict(K=8, M=8, pi_pos=3.0, omega_e=3.0, gamma=16.0,
             c_pos=0.6, c_neg=1.6, neg_val_precision=1.3, valence_inertia=0.2)
+# Frame-gated precision (revision 2026-09-27): the FULL model is gated with
+# g = 1; the "ungated" variant (g = 0) is the pre-revision model.
+FRAME_GAIN = 1.0
+N_BOOT = 2000
 
 
 # ── small numeric helpers ──────────────────────────────────
@@ -183,13 +187,24 @@ def drive(seq, variant, seed):
     """
     p = dict(FULL)
     horizon, adaptive = 2, True
+    frame_gain, frame_clamp = FRAME_GAIN, None
     if variant == "symmetric":
         p.update(c_pos=1.0, c_neg=1.0, neg_val_precision=1.0)
     elif variant == "one_step":
         horizon, adaptive = 1, False
     elif variant == "no_inertia":
         p.update(valence_inertia=0.0)
-    # "full" uses defaults
+    elif variant == "ungated":
+        # pre-revision model: the frame is inferred but gates nothing
+        frame_gain = 0.0
+    elif variant == "frame_present":
+        # gated model with the gating posterior clamped to PRESENT
+        frame_clamp = 1
+    elif variant == "frame_past":
+        frame_clamp = 0
+    elif variant == "frame_future":
+        frame_clamp = 2
+    # "full" uses defaults (frame-gated, g = FRAME_GAIN)
 
     K, M = p["K"], p["M"]
     model = build_model(K=K, M=M, pi_pos=p["pi_pos"], omega_e=p["omega_e"],
@@ -202,7 +217,8 @@ def drive(seq, variant, seed):
                   valence_inertia=p["valence_inertia"],
                   counterfactual_horizon=horizon,
                   adaptive_counterfactual_horizon=adaptive,
-                  max_counterfactual_horizon=3, seed=seed)
+                  max_counterfactual_horizon=3,
+                  frame_gain=frame_gain, frame_clamp=frame_clamp, seed=seed)
 
     v_axis = np.arange(K)
     preds = {h: [] for h in HORIZONS}
@@ -234,14 +250,27 @@ def drive(seq, variant, seed):
 
 
 # ── assemble a flat table of prediction records ────────────
-def build_records(participants, variants, quick=False):
+def _drive_job(args):
+    pid, seq, variant, seed = args
+    return pid, variant, drive(seq, variant, seed)
+
+
+def build_records(participants, variants, quick=False, workers=1):
     pids = sorted(participants)
     if quick:
         pids = pids[:40]
     driven = {v: {} for v in variants}
-    for i, pid in enumerate(pids):
-        for v in variants:
-            driven[v][pid] = drive(participants[pid], v, seed=100 + i)
+    jobs = [(pid, participants[pid], v, 100 + i)
+            for i, pid in enumerate(pids) for v in variants]
+    if workers > 1:
+        from concurrent.futures import ProcessPoolExecutor
+        with ProcessPoolExecutor(max_workers=workers) as ex:
+            for pid, v, d in ex.map(_drive_job, jobs, chunksize=4):
+                driven[v][pid] = d
+    else:
+        for job in jobs:
+            pid, v, d = _drive_job(job)
+            driven[v][pid] = d
 
     records = []
     for pid in pids:
@@ -277,11 +306,20 @@ def evaluate(records, pids, folds, variants):
 
     # predictor -> horizon -> list of (rmse, r2, r) per fold
     metrics = {}
+    # out-of-fold predictions, predictor -> horizon -> {record index: pred}
+    oof = {}
 
     def add(name, h, rmse, r2, r):
         metrics.setdefault(name, {}).setdefault(h, []).append((rmse, r2, r))
 
+    def keep(name, h, te_idx, pred):
+        d = oof.setdefault(name, {}).setdefault(h, {})
+        for i, p in zip(te_idx, np.asarray(pred, float)):
+            d[i] = float(p)
+
     e_mean_all = mean(r["e_t"] for r in records)
+    for i, r in enumerate(records):
+        r["_i"] = i
 
     for k in range(folds):
         train = [r for r in records if fold_of[r["pid"]] != k]
@@ -294,11 +332,13 @@ def evaluate(records, pids, folds, variants):
                 continue
             ytr = np.array([r[f"y{h}"] for r in tr])
             yte = np.array([r[f"y{h}"] for r in te])
+            te_idx = [r["_i"] for r in te]
 
             # naive persistence (no fit)
             add("persistence", h, _rmse([r["v_t"] for r in te], yte),
                 _r2([r["v_t"] for r in te], yte),
                 _pearson([r["v_t"] for r in te], yte))
+            keep("persistence", h, te_idx, [r["v_t"] for r in te])
 
             # mean
             add("mean", h, _rmse(np.full(len(te), ytr.mean()), yte),
@@ -310,6 +350,13 @@ def evaluate(records, pids, folds, variants):
             for _ in range(h):
                 p = c[0] + c[1] * p
             add("ar1", h, _rmse(p, yte), _r2(p, yte), _pearson(p, yte))
+            keep("ar1", h, te_idx, p)
+
+            # direct h-step regression on v_t (strongest simple predictor)
+            c = _fit_linear([[1, r["v_t"]] for r in tr], ytr)
+            p = c[0] + c[1] * np.array([r["v_t"] for r in te], float)
+            add("direct_v", h, _rmse(p, yte), _r2(p, yte), _pearson(p, yte))
+            keep("direct_v", h, te_idx, p)
 
             # linear event: a + b v + c e ; iterate with mean event for h>1
             c = _fit_linear([[1, r["v_t"], r["e_t"]] for r in tr], ytr)
@@ -318,6 +365,7 @@ def evaluate(records, pids, folds, variants):
             for step in range(h):
                 p = c[0] + c[1] * p + c[2] * (e_now if step == 0 else e_mean_all)
             add("linear_event", h, _rmse(p, yte), _r2(p, yte), _pearson(p, yte))
+            keep("linear_event", h, te_idx, p)
 
             # linear asymmetric
             def feat(r):
@@ -330,6 +378,7 @@ def evaluate(records, pids, folds, variants):
                       else np.full(len(te), e_mean_all))
                 p = c[0] + c[1] * p + c[2] * np.maximum(ee, 0) + c[3] * np.minimum(ee, 0)
             add("linear_event_asym", h, _rmse(p, yte), _r2(p, yte), _pearson(p, yte))
+            keep("linear_event_asym", h, te_idx, p)
 
             # model variants (train-fit affine on the model's own output)
             for v in variants:
@@ -337,6 +386,17 @@ def evaluate(records, pids, folds, variants):
                 c = _fit_linear([[1, r[key]] for r in tr], ytr)
                 p = _apply_affine(c, [r[key] for r in te])
                 add(f"model_{v}", h, _rmse(p, yte), _r2(p, yte), _pearson(p, yte))
+                keep(f"model_{v}", h, te_idx, p)
+
+            # channels-only: the three readout channels of the full model as
+            # regressors (plus v_t), no state rollout -> isolates channel
+            # integration from the frame-gated dynamics
+            def cfeat(r):
+                return [1, r["v_t"], r["r_joffily"], r["r_pattisapu"], r["r_hesp"]]
+            c = _fit_linear([cfeat(r) for r in tr], ytr)
+            p = np.asarray([cfeat(r) for r in te], float) @ c
+            add("channels_only", h, _rmse(p, yte), _r2(p, yte), _pearson(p, yte))
+            keep("channels_only", h, te_idx, p)
 
             # readout baselines: 1-step only (they are instantaneous channels)
             if h == 1:
@@ -356,8 +416,36 @@ def evaluate(records, pids, folds, variants):
             agg[name][h] = dict(rmse=float(np.nanmean(arr[:, 0])),
                                  rmse_sd=float(np.nanstd(arr[:, 0])),
                                  r2=float(np.nanmean(arr[:, 1])),
+                                 r2_sd=float(np.nanstd(arr[:, 1])),
+                                 r2_folds=[float(x) for x in arr[:, 1]],
                                  r=float(np.nanmean(arr[:, 2])))
-    return agg
+    return agg, oof
+
+
+def bootstrap_r2_diff(records, oof, name_a, name_b, h, n_boot=N_BOOT, seed=0):
+    """Participant-level bootstrap CI for R2(name_a) - R2(name_b) at horizon h,
+    using pooled out-of-fold predictions. Returns (point, lo, hi, p_le_0)."""
+    rows = [(r["pid"], r[f"y{h}"], oof[name_a][h][r["_i"]], oof[name_b][h][r["_i"]])
+            for r in records
+            if r[f"y{h}"] is not None and r["_i"] in oof[name_a][h]
+            and r["_i"] in oof[name_b][h]]
+    pids = sorted({p for p, *_ in rows})
+    by = {p: [] for p in pids}
+    for p, y, a, b in rows:
+        by[p].append((y, a, b))
+    by = {p: np.array(v, float) for p, v in by.items()}
+
+    def diff(sel):
+        arr = np.concatenate([by[p] for p in sel])
+        return _r2(arr[:, 1], arr[:, 0]) - _r2(arr[:, 2], arr[:, 0])
+
+    point = diff(pids)
+    rng = np.random.RandomState(seed)
+    boots = np.array([diff(rng.choice(pids, size=len(pids), replace=True))
+                      for _ in range(n_boot)])
+    lo, hi = np.percentile(boots, [2.5, 97.5])
+    return dict(point=float(point), lo=float(lo), hi=float(hi),
+                p_le_0=float(np.mean(boots <= 0)), n_participants=len(pids))
 
 
 # ── asymmetry + non-circular frame->worry analyses ─────────
@@ -390,7 +478,10 @@ def asymmetry(records):
 
 
 def frame_worry(records):
-    """Non-circular check: worry is NEVER fed to the model."""
+    """Raw frame-worry association. NOTE (revision 2026-09-27): the valence
+    composite fed to the model INCLUDES the worried item, so this raw r is not
+    a non-circular test. The honest analysis (worry removed from the input,
+    covariate-adjusted, cluster-robust) is in frame_worry_multilevel.py."""
     ff = [r["vfut"] for r in records if r["w_t"] is not None]
     ww = [r["w_t"] for r in records if r["w_t"] is not None]
     # compare with the reward readout as a control
@@ -405,11 +496,17 @@ def _fmt(x, d=4):
     return "n/a" if x is None or (isinstance(x, float) and math.isnan(x)) else f"{x:.{d}f}"
 
 
-def write_report(agg, asym, fw, n_participants, n_records, quick):
-    order = ["persistence", "mean", "ar1", "linear_event", "linear_event_asym",
-             "model_full", "model_symmetric", "model_one_step", "model_no_inertia",
+def write_report(agg, asym, fw, n_participants, n_records, quick, cis=None):
+    order = ["persistence", "mean", "ar1", "direct_v", "linear_event", "linear_event_asym",
+             "model_full", "model_ungated", "model_frame_present", "model_frame_past",
+             "model_frame_future", "channels_only",
+             "model_symmetric", "model_one_step", "model_no_inertia",
              "readout_joffily", "readout_pattisapu", "readout_hesp"]
     lines = ["# Rebuilt Empirical Validation Report", ""]
+    lines.append(f"- Model: frame-gated (g={FRAME_GAIN}); `model_ungated` is the "
+                 f"pre-revision frame-inert model; `model_frame_*` clamp the gating "
+                 f"posterior; `channels_only` regresses on the three readout channels "
+                 f"with no state rollout.")
     lines.append(f"- Dataset: Geschwind/Bringmann residual-depression ESM "
                  f"(`data_raw/geschwind_2013_s004.csv`).")
     lines.append(f"- Participants used: {n_participants}; prediction records: {n_records}"
@@ -423,7 +520,7 @@ def write_report(agg, asym, fw, n_participants, n_records, quick):
     for h in HORIZONS:
         lines.append(f"## Horizon h = {h} step(s) ahead")
         lines.append("")
-        lines.append("| Predictor | RMSE | R2 | r | skill vs AR(1) |")
+        lines.append("| Predictor | RMSE | R2 (fold SD) | r | skill vs AR(1) |")
         lines.append("|---|---:|---:|---:|---:|")
         base = ar1.get(h, {}).get("rmse")
         for name in order:
@@ -432,9 +529,18 @@ def write_report(agg, asym, fw, n_participants, n_records, quick):
                 continue
             skill = ("n/a" if not base or base == 0
                      else f"{100.0 * (1 - m['rmse'] / base):+.1f}%")
-            lines.append(f"| {name} | {_fmt(m['rmse'])} | {_fmt(m['r2'],3)} | "
+            lines.append(f"| {name} | {_fmt(m['rmse'])} | {_fmt(m['r2'],3)} "
+                         f"({_fmt(m.get('r2_sd'),3)}) | "
                          f"{_fmt(m['r'],3)} | {skill} |")
         lines.append("")
+        if cis and h in cis:
+            lines.append("Participant-bootstrap 95% CI on R2 differences "
+                         f"({N_BOOT} resamples of participants):")
+            lines.append("")
+            for label, d in cis[h].items():
+                lines.append(f"- {label}: {d['point']:+.3f} [{d['lo']:+.3f}, "
+                             f"{d['hi']:+.3f}], P(diff<=0)={d['p_le_0']:.3f}")
+            lines.append("")
 
     lines.append("## Transition asymmetry (effect of event on 1-step valence change)")
     lines.append("")
@@ -452,10 +558,11 @@ def write_report(agg, asym, fw, n_participants, n_records, quick):
         lines.append(f"| {label} | {_fmt(bp)} | {_fmt(bn)} | {_fmt(ratio,2)} |")
     lines.append("")
 
-    lines.append("## Non-circular test: future-frame belief vs measured worry")
+    lines.append("## Raw future-frame belief vs measured worry (NOT non-circular)")
     lines.append("")
-    lines.append("Worry is never given to the model; the future-frame belief is "
-                 "driven only by valence+event observations.")
+    lines.append("The valence composite fed to the model includes the worried item. "
+                 "See frame_worry_multilevel.py for the analysis with worry removed "
+                 "from the input and covariates controlled.")
     lines.append("")
     lines.append(f"- corr(future-frame belief, worry item) = "
                  f"{_fmt(fw['future_frame_vs_worry'],3)}  (n={fw['n']})")
@@ -470,20 +577,37 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--quick", action="store_true")
     ap.add_argument("--folds", type=int, default=5)
+    ap.add_argument("--workers", type=int, default=1)
     args = ap.parse_args()
 
-    variants = ["full", "symmetric", "one_step", "no_inertia"]
+    variants = ["full", "ungated", "frame_present", "frame_past", "frame_future",
+                "symmetric", "one_step", "no_inertia"]
     print("Loading participants ...")
     participants = load_participants()
     print(f"  {len(participants)} participants with >=12 valence beeps")
     print("Driving model variants (this is the slow part) ...")
-    records, pids = build_records(participants, variants, quick=args.quick)
+    records, pids = build_records(participants, variants, quick=args.quick,
+                                  workers=args.workers)
     print(f"  {len(records)} beep records across {len(pids)} participants")
     print("Cross-validated evaluation ...")
-    agg = evaluate(records, pids, args.folds, variants)
+    agg, oof = evaluate(records, pids, args.folds, variants)
+    cis = {}
+    for h in HORIZONS:
+        best_base = max(["ar1", "direct_v", "linear_event", "linear_event_asym"],
+                        key=lambda nm: agg[nm][h]["r2"])
+        cis[h] = {
+            f"full - best baseline ({best_base})":
+                bootstrap_r2_diff(records, oof, "model_full", best_base, h),
+            "full - ungated (frame-inert)":
+                bootstrap_r2_diff(records, oof, "model_full", "model_ungated", h),
+            "full - frame clamped to PRESENT":
+                bootstrap_r2_diff(records, oof, "model_full", "model_frame_present", h),
+            "full - channels only":
+                bootstrap_r2_diff(records, oof, "model_full", "channels_only", h),
+        }
     asym = asymmetry(records)
     fw = frame_worry(records)
-    text = write_report(agg, asym, fw, len(pids), len(records), args.quick)
+    text = write_report(agg, asym, fw, len(pids), len(records), args.quick, cis=cis)
     print("\n" + text)
     print(f"\nReport written to {REPORT}")
 

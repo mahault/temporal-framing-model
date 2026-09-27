@@ -15,6 +15,12 @@ from agent import Agent
 from environment import Environment
 
 
+# Frame-gated precision (revision 2026-09-27). 1.0 = the inferred temporal
+# frame q(f) gates channel precision and EFE horizon weights (see Agent).
+# 0.0 reproduces the pre-revision, frame-inert model exactly.
+FRAME_GAIN = 1.0
+
+
 # ── Clinical profiles ──────────────────────────────────────
 PROFILES = {
     'healthy': dict(
@@ -51,12 +57,19 @@ def run_trial(K=8, M=5, pi_pos=5.0, omega_e=5.0, gamma=16.0, c_scale=1.0,
               counterfactual_horizon=2, counterfactual_discount=0.75,
               adaptive_counterfactual_horizon=False,
               max_counterfactual_horizon=4,
+              frame_gain=None, frame_clamp=None,
               **_ignored):
     """
     Run one agent–environment trial.
 
+    frame_gain : None -> module default FRAME_GAIN (1.0 = frame-gated model,
+                 0.0 = pre-revision frame-inert model).
+    frame_clamp: None or a frame index; clamps the gating posterior (ablation).
+
     Returns dict of (T,)-shaped arrays for every tracked variable.
     """
+    if frame_gain is None:
+        frame_gain = FRAME_GAIN
     model = build_model(K=K, M=M, pi_pos=pi_pos, omega_e=omega_e,
                         gamma=gamma, c_scale=c_scale,
                         c_pos=c_pos, c_neg=c_neg,
@@ -75,6 +88,7 @@ def run_trial(K=8, M=5, pi_pos=5.0, omega_e=5.0, gamma=16.0, c_scale=1.0,
                   counterfactual_discount=counterfactual_discount,
                   adaptive_counterfactual_horizon=adaptive_counterfactual_horizon,
                   max_counterfactual_horizon=max_counterfactual_horizon,
+                  frame_gain=frame_gain, frame_clamp=frame_clamp,
                   seed=seed + 1)
     env = Environment(K=K, M=M, volatility=volatility, seed=seed,
                       pi_pos=pi_pos, c_scale=c_scale, c_pos=c_pos)
