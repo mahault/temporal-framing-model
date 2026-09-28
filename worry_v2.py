@@ -24,10 +24,10 @@ from empirical_rebuild import same_segment
 from frame_worry_multilevel import _valence_no_worry
 from esm_eval_v3 import HORIZONS, NLAG, Ridge, add_time_features, bootstrap_diff, pick_lambda, r2
 from fit_v2 import folds_of
-from model_v2 import ModelV2, empirical_bayes_lambda, fit, make_tensors, subset
+from model_v2 import ModelV2, fit_hierarchical, make_tensors, subset
 
 ROOT = Path(__file__).resolve().parent
-FE = ["pred", "x", "m", "q_past", "q_pres", "q_fut", "vB", "vP", "vF", "S1", "rho"]
+FE = ["pred", "x", "m", "b", "q_past", "q_pres", "q_fut", "vB", "vP", "vF", "S1", "rho"]
 
 
 def _fit_fold(a):
@@ -36,10 +36,8 @@ def _fit_fold(a):
     dt = make_tensors(parts, pids, True)
     tr = np.array([i for i, p in enumerate(pids) if fold[p] != k])
     te = np.array([i for i, p in enumerate(pids) if fold[p] == k])
-    model = ModelV2(len(pids), True, g=1.0)
-    fit(model, subset(dt, tr), tr, iters=iters, lam=10.0, seed=k)
-    lam = empirical_bayes_lambda(model, tr)
-    fit(model, subset(dt, tr), tr, iters=iters // 2, lam=lam, seed=k + 100)
+    model = ModelV2(len(pids), True, g=1.0, no_hier=True)
+    fit_hierarchical(model, subset(dt, tr), tr, iters=iters, seed=k)
     model.eval()
     with torch.no_grad():
         res = model(subset(dt, te), torch.as_tensor(te))
@@ -47,7 +45,7 @@ def _fit_fold(a):
     for n, i in enumerate(te):
         p = pids[i]
         T = len(parts[p])
-        feats[p] = [dict(pred=res["yhat"][n, t].numpy(), x=float(res["x"][n, t]), m=float(res["m"][n, t]),
+        feats[p] = [dict(pred=res["yhat"][n, t].numpy(), x=float(res["x"][n, t]), m=float(res["m"][n, t]), b=float(res["b"][n, t]),
                          q_past=float(res["q"][n, t, 0]), q_pres=float(res["q"][n, t, 1]), q_fut=float(res["q"][n, t, 2]),
                          vB=float(res["vB"][n, t]), vP=float(res["vP"][n, t]), vF=float(res["vF"][n, t]),
                          S1=float(res["S1"][n, t]), rho=float(res["rho"][n, t])) for t in range(T)]
