@@ -29,14 +29,14 @@ import torch
 import empirical_rebuild as er
 from esm_eval_v3 import (HORIZONS, Ridge, add_time_features, bootstrap_diff, build_records, feats,
                          load_osf, pick_lambda, r2)
-from model_v2 import ModelV2, empirical_bayes_lambda, fit, make_tensors
+from model_v2 import ModelV2, adapt, fit_hierarchical, make_tensors
 
 ROOT = Path(__file__).resolve().parent
 VARIANTS = {
     "gated": dict(g=1.0), "inert": dict(g=0.0),
     "clampPAST": dict(g=1.0, clamp=0), "clampPRESENT": dict(g=1.0, clamp=1), "clampFUTURE": dict(g=1.0, clamp=2),
     "no_level2": dict(g=1.0, no_level2=True), "no_tod": dict(g=1.0, no_tod=True),
-    "no_hier": dict(g=1.0, no_hier=True), "no_channels": dict(g=1.0, no_channels=True),
+    "no_baseline": dict(g=1.0, no_baseline=True), "no_channels": dict(g=1.0, no_channels=True),
 }
 ADAPT_VARIANTS = ("gated", "inert")
 
@@ -74,11 +74,7 @@ def _fit_job(a):
     spec = VARIANTS[variant]
     model = ModelV2(len(pids), has_event, **spec)
     dtr = _sub(dt, tr)
-    lam = 10.0
-    fit(model, dtr, tr, iters=iters, lam=lam, seed=k)
-    if not model.no_hier:
-        lam = empirical_bayes_lambda(model, tr)
-        fit(model, dtr, tr, iters=iters // 2, lam=lam, seed=k + 100)
+    lam = fit_hierarchical(model, dtr, tr, iters=iters, seed=k)
     # pooled predictions on held-out participants (delta = 0 there)
     model.eval()
     with torch.no_grad():
@@ -86,15 +82,13 @@ def _fit_job(a):
     rows = _collect(res, _sub(dt, te), [pids[i] for i in te])
     out = dict(sample=sample, fold=k, variant=variant, lam=lam, secs=time.time() - t0,
                group={n: (float(v) if v.dim() == 0 else [float(x) for x in v]) for n, v in model.named_parameters() if n != "delta"}, rows=rows)
-    if variant in ADAPT_VARIANTS:
+    if variant in ADAPT_VARIANTS and lam is not None:
         # protocol A: adapt delta on the first segment of each held-out participant
         dte = _sub(dt, te)
         ad = split_adapt_mask(parts, [pids[i] for i in te], has_event, dte)
         dad = dict(dte)
         dad["mt"] = {h: dte["mt"][h] * ad for h in dte["mt"]}
-        for n_, p_ in model.named_parameters():
-            p_.requires_grad_(n_ == "delta")
-        fit(model, dad, te, iters=iters // 2, lam=lam, lr=0.02, seed=k + 200)
+        adapt(model, dad, te, lam, iters=max(iters // 2, 50), seed=k + 200)
         with torch.no_grad():
             res_a = model(dte, torch.as_tensor(te))
         out["rows_A"] = _collect(res_a, dte, [pids[i] for i in te], eval_mask=(1 - ad))
@@ -118,7 +112,7 @@ def _collect(res, dte, pids_te, eval_mask=None):
             i=np.arange(T), keep=em[n, :T].astype(bool),
             yhat=res["yhat"][n, :T].numpy(), S=res["S"][n, :T].numpy(), S1=res["S1"][n, :T].numpy(),
             eps=res["eps"][n, :T].numpy(), q=res["q"][n, :T].numpy(), x=res["x"][n, :T].numpy(),
-            m=res["m"][n, :T].numpy(), vB=res["vB"][n, :T].numpy(), vP=res["vP"][n, :T].numpy(),
+            m=res["m"][n, :T].numpy(), b=res["b"][n, :T].numpy(), vB=res["vB"][n, :T].numpy(), vP=res["vP"][n, :T].numpy(),
             vF=res["vF"][n, :T].numpy(), rho=res["rho"][n, :T].numpy(), u=res["u"][n, :T].numpy())
     return rows
 
@@ -189,8 +183,9 @@ def main():
     lines = ["# Model v2 forecasting evaluation (2026-09-28)", "",
              "Script: `fit_v2.py`. Same participant folds as rounds 2 and 3 (seed-0 shuffle, five folds), "
              "horizons 1 to 6, participant bootstrap CIs (1000 resamples) on pooled R2 differences. "
-             "Protocol P: group parameters only on held-out participants. Protocol A: participant "
-             "deviations adapted on the first segment of each held-out participant, scored on the rest. "
+             "Protocol P: group parameters only on held-out participants (the participant baseline is a latent state "
+             "inferred online by the filter). Protocol A: participant deviations of the dynamics parameters adapted on "
+             "the first segment of each held-out participant under the empirical-Bayes prior, scored on the rest. "
              "kitchen = round-3 ridge (six lags, events, time of day); kitchen_tt = kitchen plus the "
              "target beep's time of day, which v2's readout also uses. v1 = the discrete model of "
              "round 3 (numbers from esm_eval_v3.json, no CI against v2).", ""]
@@ -313,7 +308,8 @@ def main():
             for v in variants:
                 if v not in ("gated", "inert"):
                     pairs.append((f"P:v2_{v}", "P:v2_gated"))
-            for a, b in pairs[-(6 + len(variants) - 2):]:
+                    pairs.append((f"P:v2_{v}", "kitchen_tt"))
+            for a, b in pairs[-(6 + 2 * (len(variants) - 2)):]:
                 if (a, h) not in oof or (b, h) not in oof:
                     continue
                 d = ci(a, b, h)
@@ -390,7 +386,7 @@ def main():
         gp = {v: {k2: (float(np.mean([gg[k2] for gg in gl])) if not isinstance(gl[0][k2], list) else [float(x) for x in np.mean([gg[k2] for gg in gl], axis=0)]) for k2 in gl[0]} for v, gl in groups.items()}
         lines.append("Group parameters (unconstrained, mean over folds), gated: " +
                      ", ".join(f"{k2}={v2:.3f}" if isinstance(v2, float) else f"{k2}={v2}" for k2, v2 in gp.get("gated", {}).items()))
-        lines.append("Empirical-Bayes lambda per fold (gated): " + ", ".join(f"{r['lam']:.1f}" for r in results if r["variant"] == "gated"))
+        lines.append("Empirical-Bayes lambda per fold (gated): " + ", ".join(f"{r['lam']:.1f}" for r in results if r["variant"] == "gated" and r["lam"] is not None))
         lines.append("")
         out[name] = dict(tables=tab, cis=cis, nll=nll, group=gp, n=len(pids), records=len(recs))
         log(f"[{name}] scoring done ({time.time() - t0:.0f}s)")
