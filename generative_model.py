@@ -236,6 +236,8 @@ def _build_B(K, M, F, n_s, pi_pos, valence_inertia=0.0):
 # ── Rebuild helpers ──────────────────────────────────────
 def recall_alpha(pi_pos):
     """Sigmoid gating for RECALL effectiveness."""
+    if TARGET_ALPHA_OVERRIDE is not None:
+        return float(TARGET_ALPHA_OVERRIDE)
     return 1.0 / (1.0 + np.exp(-(pi_pos - 2.0)))
 
 
@@ -261,7 +263,7 @@ def rebuild_B_with_frame(model, action, pi_pos, Bf_learned, valence_inertia=0.0)
 def B_valence(K, action, pi_pos, valence_inertia=0.0):
     """K x K valence transition matrix (cols = from, rows = to)."""
     B = np.zeros((K, K))
-    alpha_recall = 1.0 / (1.0 + np.exp(-(pi_pos - 2.0)))  # sigmoid
+    alpha_recall = recall_alpha(pi_pos)  # sigmoid, or the decoupling override
 
     for v in range(K):
         if action == RECALL:
@@ -369,6 +371,13 @@ def B_energy(M, action):
 # valence pull weights of FUTURATE (0.5) and ABSTRACT (0.65).
 FRAME_STICKINESS = None
 PULL_WEIGHT_SCALE = None
+# rho_pos role-decoupling overrides (round 2, 2026-09-27). rho_pos (pi_pos in
+# the code) does three jobs: the identity prior D, the RECALL/FUTURATE/ABSTRACT
+# targets through alpha = sigma(pi_pos - 2), and the mood-layer state that
+# rewrites both. TARGET_ALPHA_OVERRIDE fixes alpha (targets no longer follow
+# pi_pos); D_PI_POS_OVERRIDE fixes the pi_pos used in D. None = coupled.
+TARGET_ALPHA_OVERRIDE = None
+D_PI_POS_OVERRIDE = None
 _STICKY_TARGET = {RECALL: PAST, ENGAGE: PRESENT, FUTURATE: FUTURE, ABSTRACT: FUTURE}
 
 
@@ -470,6 +479,8 @@ def _build_C(K, c_scale=1.0, c_pos=None, c_neg=None):
 
 # ── D vector (prior) ──────────────────────────────────────
 def _build_D(K, M, F, n_s, pi_pos):
+    if D_PI_POS_OVERRIDE is not None:
+        pi_pos = float(D_PI_POS_OVERRIDE)
     D = np.zeros(n_s)
     for v in range(K):
         for e in range(M):

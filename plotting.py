@@ -361,7 +361,7 @@ def plot_parameter_space(sw, save_path=None):
         im = ax.imshow(sw[key], origin='lower', aspect='auto',
                        extent=ext, cmap=cmap, interpolation='bilinear')
         ax.set_xlabel('$\\omega_e$ (energy precision)')
-        ax.set_ylabel('$\\pi_{pos}$ (positive-belief precision)')
+        ax.set_ylabel('$\\rho_{\\mathrm{pos}}$ (positive-belief precision)')
         ax.set_title(title)
         plt.colorbar(im, ax=ax)
         for lab, (oe, pp) in markers.items():
@@ -801,7 +801,9 @@ def plot_feedback_reliance(results, save_path=None):
       (c) Policy entropy over time
     """
     names = ['healthy', 'recall_impaired']
-    fig, axes = plt.subplots(1, 3, figsize=(16, 5))
+    # Round 2 (2026-09-27): the policy-entropy panel was dropped; its sign
+    # depends on the hand-set constants (see sensitivity_bframe.py).
+    fig, axes = plt.subplots(1, 2, figsize=(11, 5))
 
     # (a) Action proportions — grouped bars
     ax = axes[0]
@@ -836,21 +838,7 @@ def plot_feedback_reliance(results, save_path=None):
     ax.set_ylim(-0.05, 1.05)
     ax.legend(fontsize=9)
 
-    # (c) Policy entropy over time
-    ax = axes[2]
-    for name in names:
-        h = results[name]
-        ax.plot(np.arange(len(h['policy_entropy_norm'])),
-                _ema(h['policy_entropy_norm'], 0.08),
-                color=_FRCOL[name], lw=1.5,
-                label=name.replace('_', ' ').title())
-    ax.set_xlabel('Timestep')
-    ax.set_ylabel('Normalised Policy Entropy')
-    ax.set_title('(c) Policy Entropy')
-    ax.set_ylim(-0.05, 1.05)
-    ax.legend(fontsize=9)
-
-    fig.suptitle('Feedback Reliance: Effect of Recall Impairment ($\\pi_{pos}$)',
+    fig.suptitle('Feedback Reliance: Effect of Recall Impairment ($\\rho_{\\mathrm{pos}}$)',
                  fontsize=13, y=1.02)
     plt.tight_layout()
     if save_path:
