@@ -685,3 +685,36 @@ protocol, in either sample. The one CI that excludes zero in the model's favour 
 not from the frame or the channels. Gating (readout or transition) costs prediction. Per-participant
 selection of the model's generative parameters overfits on Geschwind and is neutral on osf. A two-regime
 switching regression is no better than two lags. The paper's ESM predictive claim should be dropped.
+
+## 13. Model v2.1 (2026-09-28): hierarchical continuous state space
+
+Spec reviews/model_v2_spec.md; code model_v2.py, fit_v2.py (b18bec2 and the commit recording this
+section). Full record reviews/MODEL_V2_RESULTS.md; raw tables reviews/model_v2_forecast.md/.json.
+
+### 13a. Forecasting, pooled protocol (`python fit_v2.py --workers 12`)
+Held-out R2, h1 / h6. Geschwind: ridge (kitchen_tt) .439/.255, v1 .408/.214, v2 gated .448/.287,
+v2 inert .448/.287. osf: ridge .533/.322, v1 .506/.294, v2 gated .542/.350, v2 inert .544/.358.
+v2 gated minus ridge: Geschwind h1 +.009 [+.005,+.014], h6 +.032 [+.022,+.043]; osf h1 +.009
+[+.004,+.015], h6 +.027 [+.011,+.043]. Positive with CIs excluding zero at every horizon 1..6 in both
+samples. NLL same ordering. Adapted protocol no better than pooled.
+
+### 13b. Ablations (difference from v2 gated, h1)
+No slow mood -.038 (Geschwind) / -.074 (osf); frame clamped PRESENT -.038 / -.059 (the PAST weight gates
+the level-2 pull); no time of day -.006 / -.001; no channels +.001 / +.002 (osf h6 +.016); inert vs gated
+.000 / +.002 (osf h6 +.008 [+.001,+.020]). The gain is the slow mood level; channels and gating add
+nothing to forecasting.
+
+### 13c. Frame-sensitive tests
+Variance after events (`python variance_v2.py`): predicted variance calibrated (ratio .96-1.05); gated vs
+inert NLL +.0004 [-.0001,+.0009]. Change after events: v2 minus ridge h1 +.012 [+.005,+.018], h6 +.025
+[+.016,+.036]. Regret (`python regret_v2.py --workers 6`): v2 q(PAST) weight mean .93 SD .01; regret_frame
+= regret in held-out NLL. Choice (`python choice_v2.py`): affect histories leave q(f) near uniform
+(.29-.41); implied discount 4.92-5.52 vs 5.03 inert. Worry target (`python worry_v2.py --workers 5`): v2
+state adds h3 +.009 [+.002,+.015], h6 +.016 [+.009,+.024] to a worry ridge; frame posterior alone adds
+.000.
+
+### 13d. Verdict
+v2.1 is the first version of the model to beat the strongest regression baseline, in both samples and
+at every horizon, and to add information about future worry. The gain is from the slow mood level and the
+online participant baseline. The frame, recognised from affect alone, stays near uniform and contributes
+nothing to prediction; its behavioural effects (round 2) require a frame set by framing actions or clamps.
