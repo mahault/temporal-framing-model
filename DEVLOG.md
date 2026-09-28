@@ -79,3 +79,14 @@
   model's state adds 0.000 to the ridge (0.005 at h3 on osf only); gating and adaptation of the model's
   parameters cost prediction. Recorded in EMPIRICAL_RECORD §12 and reviews/PREDICTION_ROUND3.md; figure
   figures/fig_esm_v3.png. No paper fragment written; the predictive claim should be dropped.
+- Model v2 (hierarchical continuous state space; model_v2.py, fit_v2.py, spec reviews/model_v2_spec.md).
+  v2.0 (d8868d6) lost to the ridge because per-participant offsets overfit; v2.1 (b18bec2) moved the
+  participant baseline into the filter state. Full run (`python fit_v2.py --workers 12`, both samples,
+  9 variants x 5 folds): v2.1 beats the six-lag ridge with events and time of day at every horizon in
+  both samples (h1 +0.009, h6 +0.03, CIs exclude zero) and beats the discrete model by 0.04 to 0.07.
+  Ablations: the gain is the slow mood level; channels and frame gating add nothing; clamping PRESENT
+  hurts because the PAST weight gates the mood pull. Frame-sensitive reruns on v2.1 (variance_v2,
+  regret_v2, choice_v2, worry_v2): variance calibrated, gating neutral; frame posterior from affect stays
+  near uniform; v2 state adds to a worry ridge at h3 to h6 (+0.016 at h6), the frame does not. New
+  plot_v2.py and figures/fig_forecast_v2.png. EMPIRICAL_RECORD section 13, reviews/MODEL_V2_RESULTS.md,
+  merge-ready reviews/model_v2.tex.
