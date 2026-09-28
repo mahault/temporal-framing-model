@@ -70,3 +70,12 @@
 - Paper: round-2 edits staged as exact replacements (reviews/round2_edits_part1.py, part2.py,
   round2_edits_part3.json), verified on a local AAAI build (reviews/round2_build, 12 pp main + 4 pp
   appendix, 0 errors) before being pushed to Overleaf.
+- Round 3, "predict better": esm_eval_v3.py (strong baselines: six-lag ridge with missing-lag
+  indicators, events, time of day; two-regime Markov-switching AR by EM with causal regime posterior;
+  hierarchical adaptation of coefficients and per-participant grid selection of generative parameters on
+  the first period; horizons 1 to 6; change-after-event targets; ridge augmented with the model's state
+  features and ablations; held-out Gaussian NLL) and esm_worry_pred_v3.py (worry as a second target).
+  Result: no gain. The six-lag ridge beats the model by 0.03 R2 at every horizon in both samples; the
+  model's state adds 0.000 to the ridge (0.005 at h3 on osf only); gating and adaptation of the model's
+  parameters cost prediction. Recorded in EMPIRICAL_RECORD §12 and reviews/PREDICTION_ROUND3.md; figure
+  figures/fig_esm_v3.png. No paper fragment written; the predictive claim should be dropped.

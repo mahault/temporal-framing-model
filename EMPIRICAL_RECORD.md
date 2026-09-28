@@ -592,3 +592,96 @@ RECALL collapse range .213-.393; future fixation range .002-.318 (all > 0); diat
 (failures: the six k=1.4 cells and (0.8,0.8)), majority in 26/30; entropy diff positive in 20/30 (negative
 in the k=1.4 column and the s=0.95 row). Gain sweep: RECALL collapse .26 (g=0) -> .39 (g=1); future
 fixation .27 at g=0; diathesis 1.00 at every g.
+
+## 12. Round 3 (2026-09-28): can the model predict better? No.
+
+Directive: find a real participant-held-out predictive gain over STRONG baselines or establish there is
+none. Scripts: `esm_eval_v3.py --workers 20` (reviews/esm_eval_v3.md, .json, .log), `plot_esm_v3.py`
+(figures/fig_esm_v3.png), `esm_worry_pred_v3.py --workers 6` (reviews/esm_worry_pred_v3.md). Same
+participant folds as section 11 (seed-0 shuffle, 5 folds), same preprocessing, horizons 1 to 6, participant
+bootstrap CIs (1000 resamples) on pooled R2 differences. Ridge penalties by inner participant-grouped CV
+on training participants (chosen 1 to 100); adaptation penalty chosen on 30 training participants by
+simulating the protocol (chosen 300 at every fold and horizon, heavy shrinkage toward the pooled fit).
+Pooled generative parameters selected per fold from a 36-point grid (rho_pos, inertia, omega_e, asymmetry):
+Geschwind rho_pos 3, inertia 0.65, omega_e 3, (c_pos, c_neg) = (0.6, 1.6) in every fold; osf rho_pos 2,
+inertia 0.65, omega_e 3 or 5, same asymmetry. Descriptives as section 11 (129 / 91 participants,
+11,734 / 6,321 records; 11,486 / 6,230 one-step targets).
+
+### 12a. Valence level, pooled protocol (parameters and coefficients from other participants only)
+| predictor | G h1 | G h2 | G h3 | G h4 | G h5 | G h6 | osf h1 | osf h2 | osf h3 | osf h4 | osf h5 | osf h6 |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| persistence | .224 | .039 | -.062 | -.139 | -.163 | -.204 | .402 | .195 | .091 | .021 | .000 | -.032 |
+| two-lag regression (ar2) | .410 | .309 | .257 | .229 | .215 | .202 | .512 | .387 | .326 | .295 | .281 | .268 |
+| six-lag ridge (ar6) | .432 | .344 | .300 | .274 | .261 | .250 | .532 | .420 | .371 | .341 | .329 | .320 |
+| six-lag ridge + events (ar6e) | .433 | .343 | .300 | .274 | .262 | .250 | | | | | | |
+| kitchen ridge (lags, events, time of day) | .438 | .348 | .303 | .277 | .265 | .251 | .533 | .421 | .371 | .342 | .330 | .320 |
+| two-regime switching AR (msar2) | .410 | .312 | .264 | .236 | .223 | .211 | .514 | .392 | .335 | .305 | .297 | .285 |
+| frame model, gated (g=1) | .408 | .317 | .268 | .240 | .227 | .214 | .506 | .405 | .353 | .322 | .308 | .294 |
+| frame model, inert (g=0) | .409 | .318 | .271 | .244 | .233 | .222 | .506 | .406 | .354 | .324 | .312 | .298 |
+| transition-gated (g_B=4) | .405 | .309 | .255 | .221 | .202 | .182 | .504 | .399 | .346 | .311 | .294 | .277 |
+| channels only | .386 | .287 | .238 | .206 | .198 | .180 | .520 | .396 | .345 | .316 | .306 | .289 |
+| kitchen + model state (aug) | .437 | .347 | .302 | .277 | .265 | .252 | .534 | .425 | .377 | .348 | .337 | .323 |
+| aug without frame features | .438 | .347 | .303 | .276 | .264 | .251 | .535 | .425 | .377 | .349 | .337 | .324 |
+| aug without channels | .437 | .348 | .302 | .277 | .265 | .253 | .533 | .425 | .375 | .346 | .334 | .323 |
+| kitchen + model expectation only | .438 | .348 | .303 | .277 | .265 | .251 | .533 | .422 | .373 | .343 | .331 | .320 |
+
+CIs (Geschwind / osf): gated model minus kitchen h1 -.030 [-.036,-.023] / -.027 [-.036,-.019]; h3 -.035
+[-.047,-.024] / -.019 [-.033,-.004]; h6 -.036 [-.048,-.025] / -.026 [-.043,-.010]. aug minus kitchen h1
+-.000 [-.001,+.000] / +.002 [-.000,+.004]; h3 -.001 [-.003,+.000] / +.005 [+.001,+.009]; h6 +.001
+[-.002,+.004] / +.003 [-.004,+.010]. aug minus aug-without-frame: .000 at every horizon in both samples
+(largest |point| .001). gated minus inert: -.001 [-.002,-.000] (G h1) to -.008 [-.011,-.004] (G h6);
+-.000 to -.004 on osf, CIs exclude zero at every horizon. transition-gated minus inert: -.004 (G h1) to
+-.040 [-.053,-.026] (G h6); -.002 to -.021 on osf. kitchen minus ar2: +.028 [+.022,+.034] (G h1) to +.049
+(G h6); +.020 to +.052 on osf. msar2 minus ar2: +.000 [-.005,+.006] (G h1), +.009 [+.004,+.015] (G h6);
++.002 to +.017 on osf.
+
+### 12b. Valence level, adapted protocol (first period / first half of each held-out participant used to
+adapt; scored on the rest; rows at h1: 5,655 Geschwind, 3,113 osf)
+| predictor | G h1 | G h3 | G h6 | osf h1 | osf h3 | osf h6 |
+|---|---:|---:|---:|---:|---:|---:|
+| pooled kitchen ridge | .474 | .354 | .306 | .573 | .394 | .314 |
+| adapted kitchen ridge | .475 | .357 | .310 | .580 | .408 | .331 |
+| per-participant two-lag (no pooling) | .368 | .116 | -.018 | .504 | .349 | .284 |
+| switching AR, pooled, regime filtered through the adaptation segment | .443 | .311 | .259 | .557 | .362 | .283 |
+| frame model, pooled parameters and calibration | .441 | .315 | .256 | .540 | .378 | .290 |
+| frame model, per-participant grid selection + shrunk calibration | .420 | .263 | .156 | .542 | .382 | .345 |
+| frame model inert, shrunk calibration | .450 | .333 | .281 | .548 | .401 | .345 |
+| adapted kitchen + model state | .473 | .349 | .310 | .580 | .411 | .332 |
+
+CIs: adapted kitchen minus pooled kitchen G h1 +.002 [-.003,+.006], osf h1 +.007 [+.004,+.011], osf h3
++.015 [+.006,+.024]. Adapted model minus adapted kitchen G h1 -.056 [-.081,-.035], G h6 -.154
+[-.229,-.089]; osf h1 -.038 [-.055,-.024], osf h3 -.026 [-.069,+.014], osf h6 +.014 [-.028,+.056].
+Adapted model minus pooled model G h1 -.021 [-.045,-.001] (per-participant selection overfits), osf h6
++.055 [+.013,+.096]. Adapted aug minus adapted kitchen: -.002 to +.002, CIs include zero everywhere.
+
+### 12c. Held-out Gaussian NLL per row, pooled protocol, valence level (sigma^2 from training residuals)
+| predictor | G h1 | G h3 | G h6 | osf h1 | osf h3 | osf h6 |
+|---|---:|---:|---:|---:|---:|---:|
+| ar2 | -.451 | -.340 | -.309 | -.843 | -.679 | -.638 |
+| kitchen | -.475 | -.373 | -.340 | -.864 | -.714 | -.674 |
+| msar2 | -.452 | -.345 | -.315 | -.844 | -.686 | -.649 |
+| frame model gated | -.450 | -.348 | -.317 | -.836 | -.699 | -.656 |
+| frame model inert | -.450 | -.350 | -.321 | -.836 | -.701 | -.659 |
+| kitchen + model state | -.475 | -.372 | -.341 | -.865 | -.718 | -.677 |
+Same ordering as R2.
+
+### 12d. Change in valence after events (Geschwind, pooled protocol)
+After any reported event: kitchen .270/.339/.375 at h1/h3/h6, gated model .230/.304/.344, inert
+.231/.306/.350, aug .270/.338/.376; gated minus kitchen h1 -.041 [-.050,-.032]; aug minus kitchen -.001
+[-.002,+.001]. After the largest quartile of |event| (q75 over event beeps): kitchen .278/.333/.396,
+gated .233/.297/.369, aug .279/.332/.396; gated minus kitchen h1 -.045 [-.060,-.032]; aug minus kitchen
++.000 [-.001,+.002]. Level targets on the same subsets show the same pattern (reviews/esm_eval_v3.md).
+
+### 12e. Worry as target (Geschwind; worry never fed to the model; 11,442 rows at h1)
+Ridge on six worry lags, six valence lags, events, time of day: R2 .406/.340/.311/.289/.276/.263 at h1..h6.
+Plus the model's state features: .405/.339/.310/.288/.275/.263. Plus frame posterior only:
+.406/.340/.310/.288/.276/.263. Every CI on the difference includes zero or is negative (largest |point|
+.001). Persistence .138 at h1.
+
+### 12f. Verdict
+No predictor built on the model beats the strongest baseline at any horizon, on any target, under either
+protocol, in either sample. The one CI that excludes zero in the model's favour (aug minus kitchen, osf, h3,
++.005) does not appear at neighbouring horizons or in the other sample and comes from the h-step expectation,
+not from the frame or the channels. Gating (readout or transition) costs prediction. Per-participant
+selection of the model's generative parameters overfits on Geschwind and is neutral on osf. A two-regime
+switching regression is no better than two lags. The paper's ESM predictive claim should be dropped.
