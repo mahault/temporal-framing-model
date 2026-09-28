@@ -10,7 +10,7 @@ from __future__ import annotations
 import numpy as np
 from agent import Agent
 from generative_model import EPS, N_FRAMES, build_model
-from empirical_rebuild import load_participants, _bin_e, _bin_v, HORIZONS
+from empirical_rebuild import load_participants, _bin_e, _bin_v, HORIZONS, target
 
 FITTED = dict(pi_pos=2.0, valence_inertia=0.5, omega_e=5.0, c_pos=1.0, c_neg=1.0)
 
@@ -39,7 +39,11 @@ def drive(seq, seed):
                   valence_inertia=FITTED["valence_inertia"],
                   counterfactual_horizon=1, adaptive_counterfactual_horizon=False, seed=seed)
     v_axis = np.arange(K); preds = {h: [] for h in HORIZONS}
+    prev_p = None
     for beep in seq:
+        if prev_p is not None and beep.get("p") != prev_p:
+            agent.reset()
+        prev_p = beep.get("p")
         _, info = agent.step([_bin_e(beep["e"]), 1, _bin_v(beep["v"], K)])
         pi = info["pi"]; B = sum(pi[a] * model.B[a] for a in range(len(pi)))
         q = info["beliefs"].copy()
@@ -60,7 +64,7 @@ def main():
             r = {"pid": pid, "v_t": seq[idx]["v"],
                  "e_t": seq[idx]["e"] if seq[idx]["e"] is not None else 0.0}
             for h in HORIZONS:
-                r[f"y{h}"] = seq[idx + h]["v"] if idx + h < n else None
+                r[f"y{h}"] = target(seq, idx, h)
                 r[f"m{h}"] = preds[h][idx]
             recs.append(r)
 

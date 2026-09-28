@@ -519,3 +519,76 @@ Script: `sensitivity_bframe.py`, 4 seeds per cell, T=300, T_diathesis=3000. Pape
 | 1.0 | 0.386 (0.039) | 0.245 (0.050) | 1.00 | +0.037 (0.013) | 0.168 |
 
 Fraction of the s x k grid with recall_collapse > 0: 1.00; future_fixation > 0: 1.00; diathesis holding in all seeds: 0.77; in a majority of seeds: 0.87.
+
+## 11. Round 2 (2026-09-27/28): loader bug, unified ESM re-evaluation, participant-holdout regret, choice task, ablations
+
+**Loader bug (affects every earlier Geschwind ESM number).** `data_raw/geschwind_2013_s004.csv` holds one
+row per (participant, day, beep) for EACH of two six-day periods (`st_period` 0/1, eight weeks apart).
+`empirical_rebuild.load_participants` sorted by (day, beep) only, interleaving the periods, so "lag 1" was
+the same beep slot two months earlier and the true previous beep sat at lag 2 (pooled lag-1 r 0.31,
+lag-2 r 0.53). Fixed: sequences ordered by (period, day, beep), agent reset at the boundary, targets
+never cross it (`same_segment`, `target`). Correct lag-1 r = 0.614. The earlier "2x over baselines at
+one step" (0.193 vs 0.090) was an artefact of this.
+
+**Descriptives (correct).** Geschwind: 129 participants, 11,734 records, 248 segments, median 12 sampling
+days (5 to 14), median 96 beeps; 11,712 with worry, 11,452 with event, 128 with neuroticism; one-step
+targets 11,486. osf_83cfk: 91 participants, 6,321 records, median 71 beeps.
+
+### 11a. Unified ESM evaluation (`esm_eval_v2.py --workers 20`, reviews/esm_eval_v2.md, .json)
+Nested selection of (rho_pos, inertia, omega_e) on training participants per fold from the 18-point grid
+(selected: inertia 0.5 every fold; rho_pos 2 or 3; omega_e 3 on Geschwind, 3 or 5 on osf).
+
+| sample | h | persistence | direct v_t | direct (v_t, v_t-1) | channels only | full (g=1) | inert (g=0) | clamp FUTURE | trans g_B=4 | no inertia |
+|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| Geschwind | 1 | .220 | .372 | .407 | .382 | .398 | .399 | .399 | .395 | .363 |
+| Geschwind | 2 | .033 | .268 | .306 | .280 | .299 | .303 | .303 | .293 | .225 |
+| Geschwind | 3 | -.069 | .219 | .253 | .230 | .248 | .253 | .255 | .238 | .132 |
+| osf | 1 | .383 | .475 | .498 | .500 | .484 | .485 | .485 | .482 | .450 |
+| osf | 2 | .168 | .335 | .368 | .368 | .373 | .375 | .375 | .365 | .302 |
+| osf | 3 | .062 | .274 | .307 | .309 | .315 | .320 | .319 | .304 | .171 |
+
+CIs (participant bootstrap): full - two-lag regression: Geschwind h1 [-.015,-.002], h2 [-.013,.000],
+h3 [-.011,.002]; osf h1 [-.023,-.004], h2 [-.008,.016], h3 [-.004,.020]. full - inert: negative with CIs
+excluding zero everywhere (-.001 to -.005). Verdict: the model matches a two-lag linear regression and does
+not exceed it; the frame (gated, clamped, transition-gated) changes nothing; inertia carries the memory.
+
+### 11b. Frame-worry, worry removed from input, correct ordering (same script)
+| model | raw r | partial r (v_t, e_t) | within r | z raw | z adj | z within |
+|---|---:|---:|---:|---:|---:|---:|
+| gated g=1 | 0.018 | -0.014 | 0.004 | 1.9 | -1.5 | 0.3 |
+| inert g=0 | 0.093 | 0.006 | 0.067 | 6.9 | 0.5 | 4.6 |
+| trans g_B=4 | 0.026 | -0.009 | 0.011 | 2.5 | -1.0 | 0.8 |
+| clamp FUTURE | 0.001 | 0.001 | -0.004 | 0.1 | 0.1 | -0.4 |
+The inert model's within-person association is explained by concurrent valence (partial z 0.5).
+
+### 11c. Regret, participant-level holdout (`regret_participant_holdout.py --workers 6`, reviews/regret_participant_holdout.md)
+Group-level fits, 5 participant folds; generated contrasts from 20 simulated runs per held-out participant.
+Sugawara (n=143): human +0.133 [0.108, 0.159]; factual +0.063, NLL/trial 0.6182; cfvalue collapses to factual
+(alpha_cf -> 0); regret bias +0.085 [0.081, 0.090], NLL gain 0.0005 [-0.0001, 0.0011], 57% better;
+regret frame-gated identical (w_past SD 0.07); salience-gated +0.087, gain 0.0006 [-0.0001, 0.0012].
+Palminteri (n=20): human +0.268 [0.201, 0.342]; factual +0.115; regret +0.177 [0.160, 0.194], gain 0.0030
+[-0.0001, 0.0060], 70% better; frame-gated +0.175, gain 0.0027 [-0.0005, 0.0058].
+
+### 11d. Frame in a choice task (`frame_choice_task.py`, reviews/frame_choice_results.md)
+Implied discount (delayed:immediate ratio at G tie): g=0 5.03; g=1 clamped FUTURE 1.00, PAST/PRESENT > 50;
+inferred after RECALL (q=.44,.39,.17) 12.63, after ENGAGE (.12,.70,.18) 7.65, after FUTURATE (.04,.18,.78) 1.00.
+
+### 11e. rho_pos decoupling (`rho_pos_decoupling.py`, 4 seeds) and one-factor stress (`stress_one_factor.py`)
+RECALL collapse: coupled 0.386 (0.039); D only 0.057 (0.038); targets only 0.386 (0.039).
+Diathesis final rho_pos vulnerable+stress: coupled 1.08 (0.20) 4/4 below knee; mood cut 1.33 (0.49) 3/4;
+D healthy 1.43 (0.30) 4/4. Healthy+stress 7.3-7.4 throughout.
+One factor: q(FUTURE) healthy .20; rho_pos 2.5 .28 (ABSTRACT .15); omega_e 0.5 .22; c 2.0 .22; volatility 0.9
+.19 (v_reward .03); all four .44 (ABSTRACT .42, v_reward -.19).
+
+### 11f. Diathesis and orientation statistics (`diathesis_stats_v2.py`, `mulholland_stats.py`)
+Geschwind: n=128, 11,409 beeps; r(neur, mean valence) -0.526 [-0.632,-0.412]; r(neur, slope) +0.289
+[0.145, 0.416]; two-stage slope on neuroticism t=+3.62; pooled interaction b=+0.0005, cluster-robust z=+2.60
+(naive t=+3.90). Mulholland: 91 participants, 1,442 probes; within r(past, valence) -0.234, r(future,
+valence) -0.069; past slope z=-5.29; past x trait interaction b=+0.064, SE 0.058, z=1.11; future slope z=-1.35;
+r(trait, per-person past slope) +0.013 [-0.161, 0.208].
+
+### 11g. Sensitivity counts corrected from reviews/sensitivity_results.md
+RECALL collapse range .213-.393; future fixation range .002-.318 (all > 0); diathesis all-seeds in 23/30
+(failures: the six k=1.4 cells and (0.8,0.8)), majority in 26/30; entropy diff positive in 20/30 (negative
+in the k=1.4 column and the s=0.95 row). Gain sweep: RECALL collapse .26 (g=0) -> .39 (g=1); future
+fixation .27 at g=0; diathesis 1.00 at every g.

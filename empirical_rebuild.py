@@ -50,8 +50,15 @@ GESCHWIND_PATH = DATA_RAW / "geschwind_2013_s004.csv"
 REPORT = ROOT / "empirical_rebuild_report.md"
 
 # Column indices in the PLOS S4 rows (rows carry one extra leading field).
-COL = dict(participant=1, day=2, beep=3, cheerful=6, pleasantness=7,
-           worried=8, fearful=9, sad=10, relaxed=11)
+COL = dict(participant=1, day=2, beep=3, period=5, cheerful=6, pleasantness=7,
+           worried=8, fearful=9, sad=10, relaxed=11, neuroticism=12)
+# The PLOS S4 file holds one row per (participant, day, beep) for EACH of the two
+# six-day sampling periods (column 5, ``st_period``: 0 = before, 1 = after the
+# eight-week intervention). Sorting by (day, beep) alone interleaves the two
+# periods, so consecutive rows are the same beep slot two months apart and the
+# true previous beep sits at lag 2. Sequences are therefore ordered by
+# (period, day, beep) and every prediction target must stay inside one period
+# (see ``same_segment``).
 
 HORIZONS = (1, 2, 3)
 
@@ -147,7 +154,9 @@ def load_participants():
                 continue
             row = dict(
                 participant=vals[COL["participant"]],
+                period=_f(vals[COL["period"]]),
                 day=_f(vals[COL["day"]]), beep=_f(vals[COL["beep"]]),
+                neuroticism=_f(vals[COL["neuroticism"]]),
                 cheerful=_f(vals[COL["cheerful"]]),
                 pleasantness=_f(vals[COL["pleasantness"]]),
                 worried=_f(vals[COL["worried"]]),
@@ -159,16 +168,32 @@ def load_participants():
 
     out = {}
     for pid, rows in raw.items():
-        rows.sort(key=lambda r: (r["day"] or -1, r["beep"] or -1))
+        rows.sort(key=lambda r: (r["period"] if r["period"] is not None else -1,
+                                 r["day"] or -1, r["beep"] or -1))
         seq = []
         for row in rows:
             v = _norm_v(_valence(row))
             if v is None:            # can't observe valence -> drop beep
                 continue
-            seq.append(dict(v=v, e=row["pleasantness"], w=row["worried"]))
+            seq.append(dict(v=v, e=row["pleasantness"], w=row["worried"],
+                            p=row["period"], d=row["day"], n=row["neuroticism"]))
         if len(seq) >= 12:
             out[pid] = seq
     return out
+
+
+def same_segment(seq, i, j):
+    """True when beeps i and j of a sequence belong to the same sampling period
+    (targets never cross the two-month gap between the two periods)."""
+    return seq[i].get("p") == seq[j].get("p")
+
+
+def target(seq, i, h):
+    """h-step-ahead valence target, or None at the end of a segment."""
+    j = i + h
+    if j >= len(seq) or not same_segment(seq, i, j):
+        return None
+    return seq[j]["v"]
 
 
 # ── drive the generative model over one participant's sequence ──
@@ -223,7 +248,11 @@ def drive(seq, variant, seed):
     v_axis = np.arange(K)
     preds = {h: [] for h in HORIZONS}
     v_model, v_reward, v_action, frame_future = [], [], [], []
+    prev_p = None
     for beep in seq:
+        if prev_p is not None and beep.get("p") != prev_p:
+            agent.reset()            # new sampling period: fresh episode
+        prev_p = beep.get("p")
         obs = [_bin_e(beep["e"]), 1, _bin_v(beep["v"], K)]
         action, info = agent.step(obs)
         beliefs = info["beliefs"]
@@ -285,7 +314,7 @@ def build_records(participants, variants, quick=False, workers=1):
                         r_pattisapu=driven["full"][pid]["v_reward"][i],
                         r_hesp=driven["full"][pid]["v_action"][i])
             for h in HORIZONS:
-                base[f"y{h}"] = seq[i + h]["v"] if i + h < n else None
+                base[f"y{h}"] = target(seq, i, h)
             for v in variants:
                 for h in HORIZONS:
                     base[f"m_{v}_{h}"] = driven[v][pid]["m"][h][i]

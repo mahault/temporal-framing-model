@@ -35,7 +35,7 @@ def _esm_panel(ax, letter, title, baseline, model):
     horizons = ["1 step", "2 steps", "3 steps"]
     x = np.arange(len(horizons)); w = 0.38
     b1 = ax.bar(x - w/2, baseline, w, color=GRAY, edgecolor="white", linewidth=1.5,
-                label="Best linear/AR baseline")
+                label="Regression on last two reports")
     b2 = ax.bar(x + w/2, model, w, color=BLUE, edgecolor="white", linewidth=1.5,
                 label="Full model")
     _label_bars(ax, b1); _label_bars(ax, b2)
@@ -65,15 +65,13 @@ def fig_model_advantage():
 
     # --- Panels B, C: ESM affect-dynamics on two independent samples ---
     # Frame-gated model, esm_frame_ablation.py (2026-09-27)
-    _esm_panel(axB, "B", "Extension: remitted-depression ESM\n(Geschwind-Bringmann, n=129)",
-               [0.090, 0.274, 0.097], [0.193, 0.299, 0.167])
-    axB.text(-0.44, 0.235, "2.1x", ha="left", color=VERM, fontsize=11, fontweight="bold")
-    _esm_panel(axC, "C", "Second sample: reliability ESM\n(osf.io/83cfk, n=91)",
-               [0.475, 0.335, 0.274], [0.485, 0.373, 0.316])
+    _esm_panel(axB, "B", "Geschwind ESM\n(n=129)",
+               [0.407, 0.306, 0.253], [0.398, 0.299, 0.248])
+    _esm_panel(axC, "C", "Reliability ESM\n(osf.io/83cfk, n=91)",
+               [0.498, 0.368, 0.307], [0.484, 0.373, 0.315])
 
-    fig.suptitle("Subsumes standard reward-affect models (A); the affect-dynamics advantage is real "
-                 "but sample-dependent: large where affect carries dynamics (B), near parity where "
-                 "affect is already highly persistent (C)",
+    fig.suptitle("The readout recovers the happiness equation (A); on experience-sampling data the "
+                 "model matches a two-lag linear regression and does not exceed it (B, C)",
                  fontsize=11, fontweight="bold", y=1.02)
     fig.tight_layout()
     fig.savefig(FIG / "fig_model_advantage.png", bbox_inches="tight")

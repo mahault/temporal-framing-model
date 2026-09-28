@@ -33,7 +33,7 @@ import numpy as np
 
 from agent import Agent
 from generative_model import EPS, N_FRAMES, build_model
-from empirical_rebuild import load_participants as load_geschwind, _bin_e, _bin_v, HORIZONS
+from empirical_rebuild import load_participants as load_geschwind, _bin_e, _bin_v, HORIZONS, target
 from esm_replication import load_participants as load_osf
 
 ROOT = Path(__file__).resolve().parent
@@ -69,7 +69,11 @@ def drive(seq, seed, variant):
                   frame_gain=gain, frame_clamp=clamp, seed=seed)
     v_axis = np.arange(K); preds = {h: [] for h in HORIZONS}
     ch = []
+    prev_p = None
     for beep in seq:
+        if prev_p is not None and beep.get("p") != prev_p:
+            agent.reset()
+        prev_p = beep.get("p")
         _, info = agent.step([_bin_e(beep["e"]), 1, _bin_v(beep["v"], K)])
         ch.append((info["v_model"], info["v_reward"], info["v_action"]))
         pi = info["pi"]; B = sum(pi[a] * model.B[a] for a in range(len(pi)))
@@ -110,7 +114,7 @@ def evaluate(sample, parts, workers, has_event):
             ch = driven[(pid, "full")][1][idx]
             r["c1"], r["c2"], r["c3"] = ch
             for h in HORIZONS:
-                r[f"y{h}"] = seq[idx + h]["v"] if idx + h < n else None
+                r[f"y{h}"] = target(seq, idx, h)
                 for v in VARIANTS:
                     r[f"m_{v}_{h}"] = driven[(pid, v)][0][h][idx]
             recs.append(r)

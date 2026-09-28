@@ -49,3 +49,24 @@
 - Sensitivity sweep (sensitivity_bframe.py -> figures/fig_sensitivity.png, reviews/sensitivity_results.md): frame stickiness 0.5..0.95 x pull-weight scale 0.6..1.4 x 4 seeds, plus frame gain 0..1. RECALL collapse and future fixation positive in 30/30 cells; diathesis holds in all seeds in 77 percent of cells (failures only at pull scale 1.4); all three hold at every gain. Policy-entropy sign is constant-dependent, so the paper no longer builds on it. Recorded in EMPIRICAL_RECORD section 10e.
 - Paper (affective_valence_temporal_framing_unified.tex): new sec:fullmodel with the factorisation, Eq. frameweights and Eq. gatedefe (fixes the missing discount/rollout equation), new sec:worry with tab:worry, new sec:esm-ablation with tab:frameablation, new sec:sensitivity with fig:sensitivity, tab:regret, taxonomy rewritten as discriminating predictions, "unified" defined as structural in abstract, pi_pos renamed rho_pos (pi_pos in code), "reference ceiling" -> "reference model", baselines and grid listed in the main text, Table 2 rows revised, limitations extended (channel scale, rho_pos triple duty, FUTURATE post-hoc). All figures regenerated with the gated model (run.py); fig_model_advantage numbers updated (2.1x). Compiles clean with latexmk (28 pp, 0 undefined refs).
 - Not done: the 7-page AAAI-format tex lives on Overleaf only; these edits are in the long-form tex and must be ported. rho_pos decoupling ablation not run. Target venue per REVISION_TODO: Computational Psychiatry.
+- Nightly sweep (21:00): the above landed as two commits on master, cd8128a (the revision: frame-gated precision, honest worry test, frame ablation, regret rework, sensitivity sweep, paper edits, 39 files) and 8b2b55f (sensitivity results into the paper and EMPIRICAL_RECORD, `figures/fig_sensitivity.png`, PDF rebuilt and compiling clean). Master is 2 ahead of origin, unpushed. No CHANGELOG in this repo.
+
+## 2026-09-28
+- Round 2 on AAAI #39504 against reviews/INTERNAL_REVIEW_2026-09-27.md. Found and fixed the Geschwind
+  loader bug (two sampling periods interleaved; see EMPIRICAL_RECORD §11): every earlier Geschwind ESM
+  number was computed on scrambled sequences and the "2x at one step" headline was an artefact. New
+  unified evaluation (esm_eval_v2.py): the model matches a two-lag linear regression on both samples and
+  does not exceed it; frame variants (inert, clamped, transition-gated: new Agent.frame_transition_gain)
+  change nothing. Frame-worry redone on correct sequences: null after controls for every variant.
+- New: regret_participant_holdout.py (group-level fits, participant folds, simulated contrasts with CIs;
+  regret bias reproduces most of the human contrast, held-out gain CI includes zero; frame gating of the
+  bias changes nothing); frame_choice_task.py (intertemporal choice under the gated EFE: inferred frame
+  moves the implied discount from 5:1 to 12.6:1 after RECALL and parity after FUTURATE);
+  rho_pos_decoupling.py (targets carry the RECALL collapse; the mood loop deepens but does not create the
+  attractor); stress_one_factor.py; diathesis_stats_v2.py and mulholland_stats.py (clustered SEs, CIs).
+- Model code: generative_model TARGET_ALPHA_OVERRIDE / D_PI_POS_OVERRIDE; agent frame_transition_gain;
+  plotting labels rho_pos; fig10 now two panels (entropy panel dropped); fig_model_advantage and
+  fig_counterfactual_signature regenerated; new figures/fig_frame_choice.png.
+- Paper: round-2 edits staged as exact replacements (reviews/round2_edits_part1.py, part2.py,
+  round2_edits_part3.json), verified on a local AAAI build (reviews/round2_build, 12 pp main + 4 pp
+  appendix, 0 errors) before being pushed to Overleaf.

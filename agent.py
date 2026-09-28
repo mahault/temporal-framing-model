@@ -46,6 +46,7 @@ class Agent:
                  max_counterfactual_horizon: int = 4,
                  frame_gain: float = 0.0,
                  frame_clamp=None,
+                 frame_transition_gain: float = 0.0,
                  seed: int = 0):
         self.model = model
         self.gamma = gamma
@@ -62,6 +63,14 @@ class Agent:
         self.frame_gain = float(frame_gain)
         self.frame_clamp = frame_clamp
         self._frame_w = np.ones(3)
+        # Transition gating (round 2, 2026-09-27): the inferred frame also sets
+        # the persistence of the valence dynamics,
+        #   inertia_eff = clip(inertia * (1 + g_B (q(PAST) - q(FUTURE))), 0, 0.95),
+        # so a past-dominant posterior anchors valence to its current level and
+        # a future-dominant one makes it expectation-driven. g_B = 0 leaves the
+        # transitions untouched.
+        self.frame_transition_gain = float(frame_transition_gain)
+        self._inertia_eff = float(valence_inertia)
         self.tau_model = tau_model
         self.tau_reward = tau_reward
         self.tau_action = tau_action
@@ -129,6 +138,9 @@ class Agent:
         self._v_action_prev = 0.0
         self.pi_pos = self._initial_pi_pos
         self.mood_beliefs = build_D_mood(self._initial_pi_pos)
+        if abs(self._inertia_eff - self.valence_inertia) > 1e-9:
+            self._inertia_eff = float(self.valence_inertia)
+            self._rebuild_B()
         self._vfe_buffer = []
         self._val_buffer = []
         self._step_count = 0
@@ -253,6 +265,14 @@ class Agent:
         # Frame-gated horizon weights from the CURRENT posterior q(f)
         w_past, w_pres, w_fut = self._frame_weights(q_post)
         self._frame_w = np.array([w_past, w_pres, w_fut])
+        if self.frame_transition_gain > 0.0:
+            qf = self._gating_posterior(q_post)
+            new_inertia = float(np.clip(
+                self.valence_inertia * (1.0 + self.frame_transition_gain * (qf[0] - qf[2])),
+                0.0, 0.95))
+            if abs(new_inertia - self._inertia_eff) > 1e-6:
+                self._inertia_eff = new_inertia
+                self._rebuild_B()
         G = np.array([self._efe_gated(a, rollout_horizon, w_past, w_pres, w_fut)
                       for a in range(N_ACTIONS)])
         G_one_step = np.array([self._efe(a) for a in range(N_ACTIONS)])
@@ -328,6 +348,14 @@ class Agent:
         return action, info
 
     # ── Frame-gated precision ───────────────────────────────
+    def _gating_posterior(self, q_post):
+        """q(f) used for gating: the posterior marginal, or a one-hot clamp."""
+        if self.frame_clamp is None:
+            return q_post.reshape(self.model.K, self.model.M, 3).sum(axis=(0, 1))
+        qf = np.zeros(3)
+        qf[int(self.frame_clamp)] = 1.0
+        return qf
+
     def _frame_weights(self, q_post):
         """Horizon precision weights (w_past, w_present, w_future) from q(f).
 
@@ -469,11 +497,11 @@ class Agent:
                 Bf = counts / (counts.sum(axis=0, keepdims=True) + EPS)
                 self.model.B[a] = rebuild_B_with_frame(
                     self.model, a, self.pi_pos, Bf,
-                    valence_inertia=self.valence_inertia)
+                    valence_inertia=self._inertia_eff)
             else:
                 self.model.B[a] = rebuild_B_single(
                     self.model, a, self.pi_pos,
-                    valence_inertia=self.valence_inertia)
+                    valence_inertia=self._inertia_eff)
 
     # ── EFE for a single action ────────────────────────────
     def _efe(self, action):
