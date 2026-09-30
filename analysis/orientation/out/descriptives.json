@@ -1,0 +1,300 @@
+{
+ "baumeister1": {
+  "n_participants": 453,
+  "n_signals_with_valence": 6544,
+  "n_single_focus": 4701,
+  "single_focus_counts": {
+   "future": 1713,
+   "present": 2610,
+   "past": 378
+  },
+  "onefactor_counts": {
+   "1": 246,
+   "2": 2610,
+   "3": 919,
+   "4": 132,
+   "5": 61,
+   "6": 794,
+   "7": 144,
+   "8": 1598
+  },
+  "valence_mean_by_orientation": {
+   "past": {
+    "mean": 0.6481481481481481,
+    "n": 378
+   },
+   "present": {
+    "mean": 1.0911877394636016,
+    "n": 2610
+   },
+   "future": {
+    "mean": 0.9176882661996497,
+    "n": 1713
+   }
+  },
+  "within_person_contrast_vs_present": {
+   "past": {
+    "beta": -0.3844772663802364,
+    "se": 0.08919617552432851
+   },
+   "future": {
+    "beta": -0.14928760164898544,
+    "se": 0.04167863779765698
+   }
+  },
+  "pooled_contrast_vs_present": {
+   "past": {
+    "beta": -0.44303959131545245,
+    "se": 0.0980166562040823
+   },
+   "future": {
+    "beta": -0.17349947326395188,
+    "se": 0.0474747478379954
+   }
+  },
+  "valence_before_at_after": {
+   "past": {
+    "before": 0.8631578947368421,
+    "at": 0.6481481481481481,
+    "after": 0.7623762376237624
+   },
+   "present": {
+    "before": 0.9799627213420317,
+    "at": 1.0911877394636016,
+    "after": 1.0409674234945705
+   },
+   "future": {
+    "before": 0.9038167938931297,
+    "at": 0.9176882661996497,
+    "after": 1.011275546159267
+   }
+  },
+  "transition_counts": [
+   [
+    42,
+    134,
+    62
+   ],
+   [
+    112,
+    1048,
+    476
+   ],
+   [
+    74,
+    568,
+    476
+   ]
+  ],
+  "transition_rownorm": [
+   [
+    0.176,
+    0.563,
+    0.261
+   ],
+   [
+    0.068,
+    0.641,
+    0.291
+   ],
+   [
+    0.066,
+    0.508,
+    0.426
+   ]
+  ],
+  "persistence_future_LPM_within": {
+   "beta_future_t": -0.03279788191968255,
+   "se": 0.01717221128215208,
+   "beta_v_t": -0.00215491323337225,
+   "beta_v_t1": -0.09796725179940302,
+   "n": 3726
+  },
+  "persistence_future_logit_mundlak": {
+   "beta_future_t": -0.16149471342362992,
+   "se": 0.08667704140576704,
+   "or_": 0.8508710296481627
+  },
+  "persistence_past_LPM_within": {
+   "beta_past_t": -0.010134014887829418,
+   "se": 0.024098483181183072,
+   "n": 3726
+  },
+  "P_future_t1_given_future_t": 0.3693181818181818,
+  "P_future_t1_given_not_future_t": 0.25668679896462465,
+  "P_past_t1_given_past_t": 0.18666666666666668,
+  "P_past_t1_given_not_past_t": 0.0796847635726795,
+  "subitem_valence": {
+   "regret": {
+    "n": 44,
+    "mean_valence": 0.1590909090909091
+   },
+   "replaying": {
+    "n": 115,
+    "mean_valence": 0.2782608695652174
+   },
+   "worries": {
+    "n": 361,
+    "mean_valence": 0.1634349030470914
+   },
+   "fear": {
+    "n": 339,
+    "mean_valence": 0.2890855457227139
+   },
+   "planning": {
+    "n": 1276,
+    "mean_valence": 0.9866771159874608
+   }
+  },
+  "valence_vs_timespan_within_past": {
+   "beta": 0.023195892443482153,
+   "se": 0.05956289597562449,
+   "n": 376
+  },
+  "valence_vs_timespan_within_future": {
+   "beta": -0.06020809024897597,
+   "se": 0.021004099458349072,
+   "n": 1709
+  },
+  "study2": {
+   "n_participants": 35,
+   "n_reports": 2354,
+   "counts": {
+    "past": 147,
+    "present": 1599,
+    "future": 608
+   },
+   "mean_by_orientation": {
+    "past": 61.12925170068028,
+    "present": 69.23202001250782,
+    "future": 68.10690789473684
+   },
+   "within_contrast_vs_present": {
+    "past": {
+     "beta": -6.721669319765162,
+     "se": 2.134554153186315
+    },
+    "future": {
+     "beta": -0.9407679732854481,
+     "se": 1.144373003616044
+    }
+   }
+  }
+ },
+ "bayer": {
+  "n_participants": 511,
+  "n_signals_with_valence": 32283,
+  "n_single_focus": 10647,
+  "single_focus_counts": {
+   "future": 2378,
+   "present": 7886,
+   "past": 383
+  },
+  "valence_mean_by_orientation": {
+   "past": {
+    "mean": 3.0,
+    "n": 383
+   },
+   "present": {
+    "mean": 3.625158508749683,
+    "n": 7886
+   },
+   "future": {
+    "mean": 3.4423885618166525,
+    "n": 2378
+   }
+  },
+  "within_person_contrast_vs_present": {
+   "past": {
+    "beta": -0.5555760912866087,
+    "se": 0.07927827665475976
+   },
+   "future": {
+    "beta": -0.14487374029329306,
+    "se": 0.030167402336921043
+   }
+  },
+  "pooled_contrast_vs_present": {
+   "past": {
+    "beta": -0.6251585087496823,
+    "se": 0.10530898209238873
+   },
+   "future": {
+    "beta": -0.18276994693303364,
+    "se": 0.06052710619468787
+   }
+  },
+  "valence_before_at_after": {
+   "past": {
+    "before": 3.234265734265734,
+    "at": 3.0,
+    "after": 3.226480836236934
+   },
+   "present": {
+    "before": 3.5856379635449405,
+    "at": 3.625158508749683,
+    "after": 3.617325618772099
+   },
+   "future": {
+    "before": 3.4790518191841233,
+    "at": 3.4423885618166525,
+    "after": 3.5191815856777495
+   }
+  },
+  "transition_counts": [
+   [
+    77,
+    151,
+    59
+   ],
+   [
+    147,
+    5083,
+    979
+   ],
+   [
+    62,
+    1118,
+    770
+   ]
+  ],
+  "transition_rownorm": [
+   [
+    0.268,
+    0.526,
+    0.206
+   ],
+   [
+    0.024,
+    0.819,
+    0.158
+   ],
+   [
+    0.032,
+    0.573,
+    0.395
+   ]
+  ],
+  "persistence_future_LPM_within": {
+   "beta_future_t": 0.07116700198165406,
+   "se": 0.015435330621418244,
+   "beta_v_t": -0.016322934985438544,
+   "beta_v_t1": -0.07523854878723435,
+   "n": 8446
+  },
+  "persistence_future_logit_mundlak": {
+   "beta_future_t": 0.41744726700603885,
+   "se": 0.08731837178844407,
+   "or_": 1.5180813488131297
+  },
+  "persistence_past_LPM_within": {
+   "beta_past_t": 0.08710385780645526,
+   "se": 0.026024179389680872,
+   "n": 8446
+  },
+  "P_future_t1_given_future_t": 0.39487179487179486,
+  "P_future_t1_given_not_future_t": 0.15979064039408866,
+  "P_past_t1_given_past_t": 0.2682926829268293,
+  "P_past_t1_given_not_past_t": 0.025615884299546515
+ }
+}

@@ -718,3 +718,47 @@ v2.1 is the first version of the model to beat the strongest regression baseline
 at every horizon, and to add information about future worry. The gain is from the slow mood level and the
 online participant baseline. The frame, recognised from affect alone, stays near uniform and contributes
 nothing to prediction; its behavioural effects (round 2) require a frame set by framing actions or clamps.
+
+## 14. Is orientation actively selected? Fair test with frames defined by orientation (2026-09-30)
+
+Model and protocol as in reviews/FRAME_ORIENTATION_MODEL.md: latent frame with a fitted orientation
+likelihood (Dirichlet diagonal prior 100) and a Gaussian valence likelihood, five participant folds,
+next-signal orientation scored at t+1 where orientation was asked, per-participant means, 1000-draw
+participant bootstrap on paired differences. New in this section: one valence mean shared across frames
+for every competitor, so frames are defined by orientation only.
+
+Next-signal orientation, agent (M2_shared) minus chain with valence (M1b_shared), nats per signal:
+
+| sample | n | difference [95% CI] |
+|---|---|---|
+| Baumeister S1 | 448 | -0.0282 [-0.0388, -0.0184] |
+| Bayer | 169 | -0.0088 [-0.0147, -0.0033] |
+| Bayer, 20 or more labelled signals | 161 | -0.0063 [-0.0112, -0.0019] |
+| pooled, participant bootstrap | 617 | -0.0229 [-0.0304, -0.0149] |
+| pooled, inverse variance | 617 | -0.0132 [-0.0182, -0.0082] |
+
+Same contrast with frame-specific valence means (round 1), pooled: -0.0111 [-0.0173, -0.0049].
+Valence in the transition, M1b_shared minus M1_collapsed, pooled: +0.0003 [-0.0009, +0.0015].
+
+Ablations, variant minus M2_shared, pooled: no epistemic term +0.0235 [+0.0157, +0.0316]; zero policy
+precision identical; flat preferences -0.0018 [-0.0036, -0.0001]. No epistemic term minus M1b_shared:
+Baumeister -0.0010 [-0.0032, +0.0014], Bayer +0.0048 [+0.0007, +0.0092]. With a shared valence mean the
+risk term is constant across actions, so expected free energy separates actions only through the
+epistemic term; without it the agent reduces to a chain set by its policy prior.
+
+Fitted RECALL / ENGAGE / FUTURATE tendencies (M2_shared): Baumeister 0.28 / 0.84 / 0.83, Bayer 0.23 /
+0.74 / 0.85, against 0.70 / 0.75 / 0.90 assumed in the simulations.
+
+Baumeister Study 2 not fitted: dates without clock time, file sorted by orientation within participant,
+within-day order unrecoverable. Concurrent replication only: past minus present -6.7 on 0 to 100 (SE 2.1).
+
+Commands (repo root):
+
+    python -u analysis/orientation/frame_orientation_model.py chain baumeister1 M1b_shared M2_shared M2_shared_flatpref M2_shared_noepist M2_shared_noprecision
+    python -u analysis/orientation/frame_orientation_model.py fit1 bayer <spec>
+    python -u analysis/orientation/frame_orientation_model.py merge bayer
+    python -u analysis/orientation/frame_orientation_model.py eval1 bayer
+    python -u analysis/orientation/frame_orientation_model.py pool
+    python analysis/orientation/frame_orientation_fairtest_fig.py
+
+Outputs: analysis/orientation/out_frame/eval_*.json, pooled.json; figures/frame_orientation_fairtest.png.
