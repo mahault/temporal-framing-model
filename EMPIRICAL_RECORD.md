@@ -762,3 +762,44 @@ Commands (repo root):
     python analysis/orientation/frame_orientation_fairtest_fig.py
 
 Outputs: analysis/orientation/out_frame/eval_*.json, pooled.json; figures/frame_orientation_fairtest.png.
+
+
+## 15. Do the three channels track distinct kinds of thought? (2026-09-30)
+
+Baumeister et al. (2020) Study 1, 453 participants, 6,544 signals. Predictions preregistered in
+reviews/CHANNEL_TEST.md section 0 (commit 9d9b048). Channels from v2.1 with valence as the only input,
+group parameters fitted on the other four participant folds. Standardized coefficients, controlling
+valence, time of day and orientation, participant-clustered 95% CIs:
+
+| Item | backward | present | forward |
+|---|---|---|---|
+| regret (99 signals) | -0.06 [-0.23, +0.10] | +0.30 [-0.25, +0.85] | +0.10 [-0.36, +0.57] |
+| replaying (194) | -0.08 [-0.23, +0.07] | +0.19 [-0.29, +0.68] | -0.00 [-0.43, +0.43] |
+| past disappointed (150) | +0.06 [-0.12, +0.24] | -0.34 [-0.87, +0.20] | +0.30 [-0.12, +0.72] |
+| what might have been (185) | -0.16 [-0.29, -0.03] | +0.03 [-0.41, +0.47] | -0.25 [-0.61, +0.12] |
+| worry (438) | -0.00 [-0.11, +0.10] | -0.02 [-0.34, +0.31] | -0.12 [-0.39, +0.15] |
+| fear (418) | +0.09 [-0.01, +0.18] | -0.00 [-0.31, +0.30] | -0.23 [-0.54, +0.09] |
+| planning (1,421) | +0.10 [-0.01, +0.20] | +0.05 [-0.25, +0.34] | +0.22 [-0.05, +0.49] |
+| hoping (882) | -0.06 [-0.14, +0.02] | +0.10 [-0.15, +0.35] | +0.01 [-0.23, +0.24] |
+| disappointed rating | +0.00 [-0.03, +0.04] | +0.14 [+0.05, +0.23] | +0.03 [-0.06, +0.12] |
+| anxious rating | -0.01 [-0.05, +0.02] | +0.12 [+0.01, +0.23] | -0.09 [-0.20, +0.01] |
+
+- P1 inconclusive, P2 inconclusive, P3 supported (primary variant), P4 not supported.
+- Discriminant: no item's own channel beats both others; might-have-been, backward minus forward
+  +1.31 [+0.12, +2.50] millinats/signal, backward minus present +0.85 [-0.05, +1.86].
+- Incremental over valence, time of day and orientation: no gain for any item in the primary variant
+  (worry -0.55 [-1.10, -0.04], hoping -0.51 [-1.04, -0.00], the rest span zero). The thought-pleasantness
+  variant and v1 gain up to +13.5 and +21.6 millinats on the disappointed rating, all through the present
+  channel carrying thought pleasantness.
+- Scale: primary-variant channel SDs 0.035 / 0.178 / 0.060 (B / P / F); P and F correlate 0.89 and -0.87
+  with valence. Fitted drive weights beta_B 0.44, beta_P -0.24, beta_F 0.02 (valence variant) against
+  -0.05, 0.02, 0.99 (event variant). Rutledge per-SD weights present 0.33, forward 0.19, backward 0.02.
+
+Commands:
+
+    python analysis/channels/channel_test.py all
+    python analysis/channels/rutledge_scale.py
+
+Outputs: analysis/channels/out/results_all.json, results_v2_valence.json, results_v2_event.json,
+results_v1.json, rutledge_scale.json; figures/channel_test_coefficients.png,
+figures/channel_test_discriminant.png.

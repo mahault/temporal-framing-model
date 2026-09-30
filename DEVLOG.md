@@ -109,3 +109,26 @@
   frame_orientation_fairtest_fig.py and figures/frame_orientation_fairtest.png. reviews/frame_orientation.tex
   rewritten around the fair test; reviews/frame_orientation.bib with baumeister2020everyday,
   mao2023mcog and siepe2026openesm (checked against Crossref). EMPIRICAL_RECORD section 14.
+
+## 2026-09-30 (channel-specific test)
+
+- Preregistered four predictions for the three valence channels in reviews/CHANNEL_TEST.md section 0
+  and committed them (9d9b048) before relating any channel to any item.
+- analysis/channels/channel_test.py: Baumeister et al. (2020) Study 1, 453 participants, 6,544 signals.
+  v2.1 channels (model_v2.py unmodified, g = 1) fitted on four participant folds and run on the held-out
+  fold; valence-only input is primary, thought pleasantness as event is secondary, cached v1 drives are
+  the robustness check. Cluster-robust logistic and linear regressions of regret, replaying,
+  past-disappointed, what-might-have-been, worry, fear, planning, hoping and the disappointed, anxious
+  and angry ratings on the three channels plus valence, time of day and orientation; held-out
+  discriminant and incremental log-likelihood tests with a participant bootstrap.
+- Verdicts: P1 inconclusive, P2 inconclusive (signs as predicted for worry, fear, planning, anxiety, CIs
+  include zero), P3 supported in the primary variant, P4 not supported. The one specific association is
+  backward channel with "what might have been" thought, -0.16 [-0.29, -0.03], stable across variants.
+  Channels add nothing to valence, time of day and orientation in held-out prediction. With valence as
+  the only input the present and forward channels correlate 0.89 and -0.87 with valence.
+- Common-scale check: analysis/channels/rutledge_scale.py refits the Rutledge affect layer (3,000
+  subjects, 326,340 ratings); per-SD weights present 0.33, forward 0.19, backward 0.02. Fitted ESM drive
+  weights depend on the input variant, so no single scaling transfers.
+- New files: analysis/channels/channel_test.py, rutledge_scale.py, .gitignore; reviews/CHANNEL_TEST.md,
+  reviews/channel_test.tex (compiles in a two-column scratch wrapper, 0 errors); figures
+  channel_test_coefficients.png, channel_test_discriminant.png. EMPIRICAL_RECORD section 15.
