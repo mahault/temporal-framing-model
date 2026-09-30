@@ -1,0 +1,6 @@
+# Participant-level data derived from third-party datasets (see data_raw/ rule in the root .gitignore)
+out/signals.json
+out/channels_*.json
+out/*.npz
+# Fitted-model files; regenerate with the commands in reviews/CHANNEL_TEST.md
+out/*.pt
