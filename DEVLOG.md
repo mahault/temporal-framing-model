@@ -90,3 +90,22 @@
   near uniform; v2 state adds to a worry ridge at h3 to h6 (+0.016 at h6), the frame does not. New
   plot_v2.py and figures/fig_forecast_v2.png. EMPIRICAL_RECORD section 13, reviews/MODEL_V2_RESULTS.md,
   merge-ready reviews/model_v2.tex.
+
+## 2026-09-30
+
+- Fairer test of active frame selection (analysis/orientation, reviews/FRAME_ORIENTATION_MODEL.md
+  section of 2026-09-30). All competitors refit with one valence mean shared across frames, so frames
+  are defined by orientation alone (past-frame emission 0.97 to 1.00). The active-inference framing
+  agent still predicts the next reported orientation worse than a Markov chain with valence:
+  Baumeister S1 -0.028 [-0.039, -0.018], Bayer -0.009 [-0.015, -0.003], Bayer with 20 or more labels
+  -0.006 [-0.011, -0.002], pooled over 617 participants -0.023 [-0.030, -0.015] nats per signal.
+  With a shared mean the risk term cannot separate actions, so the epistemic term is the only part of
+  expected free energy that acts, and removing it improves the fit by +0.023 pooled. Verdict: active
+  selection of orientation by expected free energy is rejected on these data.
+- Baumeister Study 2 is not usable for sequences: no clock time, and the file is sorted by the
+  orientation label within participant. Kept as a concurrent-valence replication only.
+- frame_orientation_model.py: new shared-mean specs, fit1 skips saved parts, chain/eval1/pool stages,
+  dense-label restriction and per-participant differences in eval. New
+  frame_orientation_fairtest_fig.py and figures/frame_orientation_fairtest.png. reviews/frame_orientation.tex
+  rewritten around the fair test; reviews/frame_orientation.bib with baumeister2020everyday,
+  mao2023mcog and siepe2026openesm (checked against Crossref). EMPIRICAL_RECORD section 14.

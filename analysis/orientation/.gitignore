@@ -1,0 +1,8 @@
+# Participant-level data derived from third-party datasets (see data_raw/ rule in the root .gitignore)
+out/parts.json
+out/study2.json
+out/drives.json
+out_frame/pids_*.json
+# Large fitted-model files; regenerate with the commands in reviews/FRAME_ORIENTATION_MODEL.md
+out_frame/*.pt
+out_frame/*.err
