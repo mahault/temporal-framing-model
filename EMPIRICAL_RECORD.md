@@ -929,3 +929,30 @@ thought-pleasantness rating routed by the signal's temporal orientation (split e
 
 Verdicts: P1 distinct weights mixed (rule dependent); P2 held-out channel gain not supported; P3 gamble ordering
 not supported; P4 carry-over supported for present and forward, B versus F difference not significant.
+
+## 19. Vulnerability round 6 (2026-10-01): standard multilevel stress reactivity and emotional inertia
+
+Predictions and plan committed before analysis in 138df02 (reviews/DIATHESIS_R6.md). Run:
+`python analysis/diathesis_r6/diathesis_r6.py` then `python analysis/diathesis_r6/figures_r6.py`
+(statsmodels 0.15.0 MixedLM, REML, random intercept and random slope per person, best of four
+optimizers by REML log-likelihood). Affect in within-sample SD units, traits z-scored,
+signal-level predictors person-mean-centred.
+
+People: Geschwind 128, Kane 271, Gainey 325 (neuroticism), 320 (dysphoria), 316 (trait brooding).
+
+Concurrent stressor x neuroticism on negative affect: Geschwind +0.021 [-0.003, +0.045], Kane +0.028
+[-0.001, +0.056], DerSimonian-Laird pooled +0.024 [+0.005, +0.042] (p = 0.011), Hartung-Knapp
+[-0.018, +0.066], mega-analysis +0.027 [+0.007, +0.046]. Average stressor slopes +0.211 and +0.429.
+Positive affect: pooled +0.003 [-0.015, +0.022]. Lagged stressor: pooled -0.007 [-0.020, +0.005].
+
+NA inertia x neuroticism with person mean and SD interactions: Geschwind +0.003, Kane -0.012, Gainey
++0.027 [-0.008, +0.062], pooled +0.005 [-0.019, +0.029]. Without them: Gainey +0.046 [+0.012, +0.081],
+pooled +0.017 [-0.020, +0.053]. Gainey dysphoria +0.035 [-0.003, +0.073] with controls, +0.056
+[+0.021, +0.090] without. Person-SD x lag positive in every NA model, Gainey +0.066 [+0.023, +0.109].
+
+Worry or brooding persistence x neuroticism: pooled +0.004 [-0.033, +0.042]; Gainey brooding x
+dysphoria +0.032 [+0.001, +0.064].
+
+v2.1 per-person parameters against random-slope estimates (Spearman): log timescale vs valence lag-1
+slope +0.09 (Geschwind), -0.35 (Kane), +0.11 (Gainey); event weight vs valence stressor slope +0.04
+(Geschwind), +0.03 (Kane).
