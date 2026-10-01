@@ -833,3 +833,45 @@ Replicates Rutledge et al. 2017 (baseline yes, signed RPE no).
 
 Outputs: analysis/gamble_bdi/out/summary.json (participant-level files git-ignored),
 figures/gamble_bdi_effects.png, reviews/GAMBLE_BDI_TEST.md, reviews/gamble_bdi.tex.
+
+## 18. Gamble round 5 (2026-10-01): BDI sign and inference, second plays, momentary affect and choice, FDR
+
+Answers the cold review of the restructured draft (W3, W4, W5 Table 9, W6, W7, W10, numeric items).
+Full record: reviews/GAMBLE_R5.md; corrections table: reviews/CORRECTIONS_R5.md; merge-ready text:
+reviews/gamble_r5.tex. Scripts in analysis/gamble_r5/ (participant-level outputs git-ignored).
+
+- BDI sign. B = -|RPE| with group w_B about +0.019; BDI effect -0.0071 per SD makes w_B smaller, so
+  more depressed participants lose LESS happiness after surprise (smaller loss-over-win asymmetry). The
+  draft said "more". Model-free rating-change interaction is null on both plays (play 1 -0.0006
+  [-0.0044, +0.0032], 1,838 people; play 2 +0.0005 [-0.0060, +0.0070], 929 people). `bdi_sign.py`.
+- Table 9. Old sandwich intervals held person random effects fixed. Participant bootstrap of the whole
+  covariate model, 200 replicates (`bdi_boot.py`): baseline -0.057 [-0.065, -0.049], present +0.002
+  [-0.003, +0.007], forward +0.004 [+0.001, +0.007], backward -0.007 [-0.010, -0.003], optimism +0.039
+  [-0.180, +0.281]. Bootstrap z^2 now matches the LR chi^2 (182 vs 222, 16.8 vs 19.1, 0.1 vs 0.2).
+- Second plays: 14,761 of 46,204 participants have one, 929 with BDI (`load_plays.py`).
+- BDI replication on play 2 (`bdi_play2.py`, 200 bootstraps): baseline -0.047 [-0.058, -0.039] (LR 79),
+  backward -0.008 [-0.013, -0.003] (LR 10.5), forward +0.002 [-0.004, +0.008] (does not replicate),
+  present +0.001 [-0.006, +0.009], optimism +0.282 [-0.049, +0.549] (LR 4.5).
+- Transfer of person weights play 1 -> play 2 (`play2.py`), nats per rating: channels person minus
+  group +0.0134 [+0.0123, +0.0146]; happiness equation +0.0064 [+0.0025, +0.0101]; channels minus HE
+  with person weights +0.0077 [+0.0046, +0.0106], with group weights +0.0007 [+0.0002, +0.0011].
+  Test-retest Spearman: present .42, forward .22, backward .15 (HE: RPE .42, certain .21, EV .14).
+  Channels beat HE after surprise (+0.0026 at median-75th percentile of unsigned PE), lose after runs
+  of safe choices (-0.0043).
+- Momentary affect and choice (`fast_choice.py`, nested, other parameters fixed, 12,000 training
+  participants per fold, scored on all 46,204 held out): perseveration +0.0100 [+0.0096, +0.0103] per
+  choice over prospect theory; fast affect beyond perseveration +0.0011 [+0.0010, +0.0012] (held-out
+  trials +0.0013); outcome lags beyond perseveration +0.0020 [+0.0018, +0.0021]. Coupling: c_ch +0.31,
+  eta_f -1.03, zeta_f +1.51, b_f -0.64. Perseveration (+0.0099 in J) exceeds the flagged J_noP gain
+  (+0.0069).
+- FDR (`fdr.py`, BH q = .05 within families): forecasting 11/11 nominal survive; orientation 9/9;
+  channels gamble 14/15; ESM channel test 0/3 (what might have been adjusted p .19); vulnerability ESM
+  20/23; depression 5/5; framing 15/17.
+
+    python analysis/gamble_r5/load_plays.py
+    python analysis/gamble_r5/bdi_sign.py
+    python analysis/gamble_r5/bdi_boot.py W 8 200 --iters 700 --threads 1      # W = 0..7
+    python analysis/gamble_r5/bdi_play2.py; python analysis/gamble_r5/bdi_play2.py --worker W --nworkers 8 --nboot 200
+    python analysis/gamble_r5/play2.py --threads 4
+    python analysis/gamble_r5/fast_choice.py F --iters 150 [--set 2]          # F = 0..4
+    python analysis/gamble_r5/aggregate_r5.py; python analysis/gamble_r5/fdr.py
