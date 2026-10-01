@@ -875,3 +875,35 @@ reviews/gamble_r5.tex. Scripts in analysis/gamble_r5/ (participant-level outputs
     python analysis/gamble_r5/play2.py --threads 4
     python analysis/gamble_r5/fast_choice.py F --iters 150 [--set 2]          # F = 0..4
     python analysis/gamble_r5/aggregate_r5.py; python analysis/gamble_r5/fdr.py
+
+## 17. Forecasting round 5 (2026-10-01): fair baselines, model improvements, role of the channels
+
+Answers the cold review (W1, W2). Code analysis/forecast_r5/, full record reviews/FORECAST_R5.md,
+merge-ready reviews/forecast_r5.tex, figure figures/fig_forecast_r5.png. Same records, folds, horizons
+and participant bootstrap as section 13.
+
+    cd analysis/forecast_r5
+    python baselines.py --workers 10; python kfvol.py --workers 8; python kfx.py --workers 8
+    python run_r5.py --stage cand --workers 12
+    python run_r5.py --stage cand --only lm_h6,lm_h6_vol --workers 8
+    python run_r5.py --stage cand --only lmn_h1,lmn_h6 --workers 6
+    python run_r5.py --stage abl --base sp_h6_vol --workers 12
+    python score.py --abl sp_h6_vol; python plot_r5.py
+
+- Best baseline at every horizon in both samples: local level plus AR(1) Kalman filter (person level as
+  a latent state with slow drift). R2 h1/h6: Geschwind 0.454/0.303, reliability 0.549/0.377.
+- v2.1 minus filter: Geschwind h1 -0.006 [-0.010, -0.003], h6 -0.016 [-0.025, -0.007]; reliability h1
+  -0.007 [-0.012, -0.002], h6 -0.029 [-0.050, -0.012]. Running person mean alone beats v2.1 at h6 on the
+  reliability sample (0.369 vs 0.350). The section-13 margin over the six-lag ridge was person-level
+  information.
+- Round-5 model (carried state, fitted set-point, six-step objective, volatility state; chosen on inner
+  validation in 5 of 10 folds): over v2.1 h6 +0.008 [+0.002, +0.013] Geschwind, +0.015 [+0.004, +0.030]
+  reliability; still below the filter by 0.008 and 0.014 at h6.
+- Model's two timescales written as the filter plus volatility state plus the three channels: ties the
+  filter (h6 +0.001 [-0.002, +0.005], -0.001 [-0.007, +0.004]).
+- Volatility (precision) state on the filter: NLL -0.067 [-0.087, -0.050] h1 and -0.047 [-0.068, -0.029]
+  h6 nats per beep (Geschwind); -0.086 [-0.121, -0.055] and -0.059 [-0.089, -0.030] (reliability).
+- Ablations of the round-5 model: slow level -0.048 / -0.078 at h1; set-point, carry, frame gating and
+  channels each within 0.005.
+- Channels on the filter, objective matched: Geschwind h6 +0.0015 [+0.0003, +0.0027], reliability h6
+  +0.001 [-0.002, +0.004]; no effect on change after events.
