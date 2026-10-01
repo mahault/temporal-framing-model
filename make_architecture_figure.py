@@ -43,8 +43,7 @@ box(LX, 6, LW, 11,
     "TASK-SPECIFIC GENERATIVE MODEL (POMDP)\n"
     "states $s$, observations $o$, policies $\\pi$, expected free energy $G$",
     "#EFEFEF", fs=10.5, bold=False)
-ax.text(LX + LW / 2, 3.0, "e.g. the gamble task-model (§9), an ESM affect model, "
-        "any decision task", ha="center", va="center", fontsize=8.2, color="#666",
+ax.text(LX + LW / 2, 3.0, "for example the gamble model or the experience-sampling filter (Section 2)", ha="center", va="center", fontsize=8.2, color="#666",
         style="italic")
 
 # ---- temporal-frame modulator (left) ----
@@ -54,21 +53,21 @@ box(LX, 30, 17, 12,
 
 # ---- Layer 1: three channels ----
 cy, ch = 30, 12
-box(24, cy, 12, ch, "BACKWARD\n$-dF/dt$\n(VFE)", "#DCEBF5", ec=BLUE, fs=9)
-box(37.5, cy, 12, ch, "PRESENT\nRPE", "#FBE6CC", ec=ORANGE, fs=9)
-box(51, cy, 13, ch, "FORWARD\nEFE affective\ncharge", "#F6D9CC", ec=VERM, fs=9)
+box(24, cy, 12, ch, "BACKWARD $v_B$\nchange in\nmodel evidence", "#DCEBF5", ec=BLUE, fs=9)
+box(37.5, cy, 12, ch, "PRESENT $v_P$\nreward\nprediction error", "#FBE6CC", ec=ORANGE, fs=9)
+box(51, cy, 13, ch, "FORWARD $v_F$\nrevision\nof plans", "#F6D9CC", ec=VERM, fs=9)
 ax.text(4, 46.5, "AFFECTIVE READOUT LAYER\n(three channels)",
         ha="left", va="center", fontsize=9, fontweight="bold", color="#444")
 
 # ---- Layer 2: composite ----
 box(20, 52, 44, 8,
-    "COMPOSITE VALENCE  $V=\\tanh(v_{model}+v_{reward}+v_{action})$",
+    "VALENCE DRIVE  $\\sum_c w_c\\,\\beta_c\\,v_c$,  $c \\in \\{B, P, F\\}$",
     "#E7E7E7", fs=10)
 
 # ---- Layer 3: readout state + mood ----
-box(6, 68, 26, 9, "REPRESENTED VALENCE $v$\nfelt valence $o_{val}$ (report, gating)",
+box(6, 68, 26, 9, "FAST VALENCE STATE $x_t$\nreported valence $y_t$",
     "#EFEFEF", fs=9)
-box(40, 68, 24, 9, "MOOD LAYER (M5)\nslow $\\pi_{pos}$ over trials", "#EDE3F3",
+box(40, 68, 24, 9, "SLOW MOOD STATE $m_t$\nsets positive-belief precision", "#EDE3F3",
     ec="#8e44ad", fs=9)
 
 # ---- arrows (upward flow) ----
@@ -85,29 +84,26 @@ ax.text(70.5, 54, "slow mood\nfeedback", fontsize=7.6, color="#8e44ad",
 
 # ================= right column: prior models as slices =================
 RX = 76
-ax.text(RX + 11, 92, "Prior models = single layers", ha="center",
+ax.text(RX + 11, 92, "Earlier accounts", ha="center",
         fontsize=11, fontweight="bold")
-ax.text(RX + 11, 88.4, "(our model integrates all of them)", ha="center",
+ax.text(RX + 11, 88.4, "(each covers one channel)", ha="center",
         fontsize=8.2, color="#666", style="italic")
 
 rows = [
     ("Joffily & Coricelli 2013", "backward channel only\n(perception-only VFE)", BLUE),
-    ("Pattisapu et al. 2024", "present channel only\n(RPE, POMDP)", ORANGE),
+    ("Pattisapu et al. 2025", "present channel only\n(RPE, POMDP)", ORANGE),
     ("Hesp et al. 2021", "forward channel + mood layer\n(no reward / no frame)", VERM),
-    ("Ours", "all three channels + temporal\nframe + readout state", "#111"),
+    ("This model", "three channels, temporal\nframe, two timescales", "#111"),
 ]
 y0 = 80
 for i, (name, desc, col) in enumerate(rows):
     y = y0 - i * 15
-    hero = name == "Ours"
+    hero = name == "This model"
     box(RX, y - 9.5, 23, 10.5, f"{name}\n" + desc,
         "#FFF7E6" if hero else "white", ec=col,
         lw=2.6 if hero else 1.6, fs=8.4, bold=hero)
     ax.add_patch(plt.Rectangle((RX - 2.4, y - 9.5), 1.6, 10.5, color=col, zorder=4))
 
-fig.suptitle("Affect as a readout layer over a task-specific model: the whole "
-             "architecture, and where prior models sit",
-             fontsize=12.5, fontweight="bold", y=0.985)
 fig.tight_layout(rect=(0, 0, 1, 0.96))
 fig.savefig(FIG / "fig_architecture.png", bbox_inches="tight")
 plt.close(fig)

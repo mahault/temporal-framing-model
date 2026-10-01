@@ -14,8 +14,8 @@ from common import HORIZONS, OUT, ROOT, SAMPLES  # noqa: E402
 
 LABEL = {"ridge_tt": "Ridge (six lags, events, time of day)", "ridge_pm_all": "Ridge plus running person mean",
          "kf_all_h1": "Local level plus AR(1) filter", "pmean_all": "Running person mean", "ebar1": "Per-person AR(1), shrunk",
-         "v21_gated": "Two-timescale model, v2.1", "r5_sp_h6_vol": "Two-timescale model, round 5",
-         "kfx_all_h6": "Filter core with precision state and channels"}
+         "v21_gated": "Model as first specified", "r5_sp_h6_vol": "Model with set-point and precision state",
+         "kfx_all_h6": "Two-timescale filter, precision state, channels"}
 SAMPLE_LABEL = {"Geschwind": "Geschwind et al.", "osf_83cfk": "Reliability sample"}
 
 
@@ -40,7 +40,7 @@ def main():
                                   fmt="o", capsize=2, label=LABEL[n])
         ax[1, j].axhline(0, color="grey", lw=0.8)
         ax[1, j].set_xlabel("horizon (beeps ahead)")
-        ax[1, j].set_ylabel("$R^2$ minus best baseline")
+        ax[1, j].set_ylabel("$R^2$ minus strongest competitor")
     ax[0, 0].legend(fontsize=7, loc="upper right")
     ax[1, 0].legend(fontsize=7)
     fig.tight_layout()

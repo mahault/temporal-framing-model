@@ -138,9 +138,10 @@ def main():
         res["inferred"][nm] = [p_delayed(qf, g) for g in gains]
         res["inferred"][nm + " q(f)"] = qf.tolist()
         res["indifference"][nm] = {"g=0": indifference_ratio(qf, 0.0), "g=1": indifference_ratio(qf, 1.0)}
-    ratios = np.linspace(1.0, 8.0, 36)
+    ratios = np.linspace(1.0, 16.0, 61)
     res["ratios"] = ratios.tolist()
     res["by_ratio"] = {nm: [p_delayed(qf, 1.0, 1.0, r) for r in ratios] for nm, qf in clamped.items()}
+    res["by_ratio_inferred"] = {nm: [p_delayed(inf[nm], 1.0, 1.0, r) for r in ratios] for nm in inf}
     res["by_ratio"]["g=0 (any frame)"] = [p_delayed(clamped["PRESENT"], 0.0, 1.0, r) for r in ratios]
 
     import matplotlib
@@ -150,20 +151,20 @@ def main():
     ax = axes[0]
     cols = {"PAST": "#D55E00", "PRESENT": "#009E73", "FUTURE": "#0072B2"}
     for nm, ys in res["clamped"].items():
-        ax.plot(gains, ys, marker="o", color=cols[nm], label=f"frame clamped {nm}")
+        ax.plot(gains, ys, marker="o", color=cols[nm], label=f"frame clamped to {nm.lower()}")
     for nm, ls in (("after RECALL", ":"), ("after ENGAGE", "-."), ("after FUTURATE", "--")):
-        ax.plot(gains, res["inferred"][nm], ls=ls, color="gray", label=f"inferred q(f) {nm}")
+        ax.plot(gains, res["inferred"][nm], ls=ls, color="gray", label=f"frame set by one step, {nm}")
     ax.set_xlabel("frame gain g")
-    ax.set_ylabel("P(choose DELAYED)")
-    ax.set_title("Reward ratio 2:1, delay one step", fontsize=10)
+    ax.set_ylabel("P(choose delayed)")
+    ax.set_title("Reward ratio 2 to 1, delay one step", fontsize=10)
     ax.legend(fontsize=7, frameon=False)
     ax = axes[1]
-    for nm in ("PAST", "PRESENT", "FUTURE"):
-        ax.plot(ratios, res["by_ratio"][nm], color=cols[nm], label=f"g=1, {nm}")
+    for nm, col in (("after RECALL", "#D55E00"), ("after ENGAGE", "#009E73"), ("after FUTURATE", "#0072B2")):
+        ax.plot(ratios, res["by_ratio_inferred"][nm], color=col, label=f"g=1, frame set {nm}")
     ax.plot(ratios, res["by_ratio"]["g=0 (any frame)"], color="k", ls="--", label="g=0 (frame inert)")
     ax.axhline(0.5, color="gray", lw=0.6, ls=":")
     ax.set_xlabel("delayed / immediate reward ratio")
-    ax.set_ylabel("P(choose DELAYED)")
+    ax.set_ylabel("P(choose delayed)")
     ax.set_title("Implied discounting by frame", fontsize=10)
     ax.legend(fontsize=7, frameon=False)
     for a in axes:

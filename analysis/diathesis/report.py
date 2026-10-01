@@ -104,7 +104,7 @@ def forest():
     ax.set_yticklabels(labs, fontsize=8)
     h, l = ax.get_legend_handles_labels()
     uniq = dict(zip(l, h))
-    ax.legend(uniq.values(), uniq.keys(), fontsize=8, loc="lower right")
+    ax.legend(uniq.values(), uniq.keys(), fontsize=8, loc="upper right")
     ax.set_xlabel("standardized association with neuroticism (95% CI)")
     ax.set_title("Vulnerability and person-level mood dynamics", fontsize=10)
     fig.tight_layout()

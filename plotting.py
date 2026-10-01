@@ -838,7 +838,7 @@ def plot_feedback_reliance(results, save_path=None):
     ax.set_ylim(-0.05, 1.05)
     ax.legend(fontsize=9)
 
-    fig.suptitle('Feedback Reliance: Effect of Recall Impairment ($\\rho_{\\mathrm{pos}}$)',
+    fig.suptitle('Recall impairment',
                  fontsize=13, y=1.02)
     plt.tight_layout()
     if save_path:
@@ -1112,7 +1112,7 @@ def plot_chronic_stress(results, save_path=None):
     ax.set_xlabel('Timestep')
     ax.set_ylabel('$v_{\\mathrm{model}}$ (backward valence)')
     ax.set_ylim(-1.1, 1.1)
-    ax.set_title('(b) Backward Valence $v_{\\mathrm{model}}$')
+    ax.set_title('(b) Backward valence $v_B$')
     ax.legend(fontsize=9)
 
     # ── (c) Valence channels decomposition (stressed) ────
@@ -1139,7 +1139,7 @@ def plot_chronic_stress(results, save_path=None):
     ax.set_title('(c) Stressed Agent: Valence Channels')
     ax.legend(fontsize=7)
 
-    fig.suptitle('Chronic Stress: Maladaptive Future Stabilisation',
+    fig.suptitle('Future fixation under stress',
                  fontsize=14, y=1.02)
     plt.tight_layout()
     if save_path:
