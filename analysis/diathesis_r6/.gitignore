@@ -1,0 +1,6 @@
+# Participant-level data derived from third-party datasets (see data_raw/ rule in the root .gitignore)
+out/*.json
+out/*.npz
+out/*.pt
+out/*.log
+out/*.csv
