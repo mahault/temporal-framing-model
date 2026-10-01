@@ -65,7 +65,7 @@ box(20, 52, 44, 8,
     "#E7E7E7", fs=10)
 
 # ---- Layer 3: readout state + mood ----
-box(6, 68, 26, 9, "FAST VALENCE STATE $x_t$\nreported valence $y_t$",
+box(6, 68, 26, 9, "FAST VALENCE STATE $x_t$\nreported valence $y_t$\nprecision state $z_t$",
     "#EFEFEF", fs=9)
 box(40, 68, 24, 9, "SLOW MOOD STATE $m_t$\nsets positive-belief precision", "#EDE3F3",
     ec="#8e44ad", fs=9)
@@ -93,7 +93,7 @@ rows = [
     ("Joffily & Coricelli 2013", "backward channel only\n(perception-only VFE)", BLUE),
     ("Pattisapu et al. 2025", "present channel only\n(RPE, POMDP)", ORANGE),
     ("Hesp et al. 2021", "forward channel + mood layer\n(no reward / no frame)", VERM),
-    ("This model", "three channels, temporal\nframe, two timescales", "#111"),
+    ("This model", "three channels, temporal frame,\ntwo timescales, precision state", "#111"),
 ]
 y0 = 80
 for i, (name, desc, col) in enumerate(rows):
