@@ -803,3 +803,33 @@ Commands:
 Outputs: analysis/channels/out/results_all.json, results_v2_valence.json, results_v2_event.json,
 results_v1.json, rutledge_scale.json; figures/channel_test_coefficients.png,
 figures/channel_test_discriminant.png.
+
+## 16. Depression and the joint gamble model (2026-10-01)
+
+Predictions written and committed before analysis (fa830ae). Rutledge GBE depData, 1,838 of 1,858
+BDI participants with a usable first play; each held out of the fold whose group parameters were
+used. Covariate model on model J (BDI, age band, sex as fixed effects on baseline, three channel
+weights and optimism eta; random effects on baseline, choice bias and log precision), converged
+to 6.483204 nats per person, likelihood-ratio tests per BDI effect.
+
+| Per SD of BDI | Effect [95% CI] | LR chi²(1) |
+|---|---|---|
+| Baseline mood a | -0.057 [-0.060, -0.054] | 222 |
+| Present weight | +0.002 [-0.002, +0.006] | 1.6 |
+| Forward weight | +0.004 [+0.001, +0.008] | 6.1 |
+| Backward weight | -0.007 [-0.010, -0.004] | 19.1 |
+| Optimism eta | +0.039 [-0.003, +0.081] | 0.18 |
+
+Mood persistence not identified per person (posterior sd 1.04 vs between-person 0.24, logit);
+earlier free fits ran to the boundary and are superseded. Held-out BDI R²: covariates 0.011,
++model-free 0.116, +model parameters 0.156; model over model-free +0.039 [+0.021, +0.058];
+model baseline over mean happiness +0.024 [+0.008, +0.039]. Verdicts: (a) supported, (b) not
+testable, (c) not supported, (d) contradicted in direction, (e) not supported; unpredicted
+backward-channel effect (more depressed, more happiness lost to surprise of either sign).
+Replicates Rutledge et al. 2017 (baseline yes, signed RPE no).
+
+    python analysis/gamble_bdi/fit_bdi.py
+    python analysis/gamble_bdi/analyze_bdi.py
+
+Outputs: analysis/gamble_bdi/out/summary.json (participant-level files git-ignored),
+figures/gamble_bdi_effects.png, reviews/GAMBLE_BDI_TEST.md, reviews/gamble_bdi.tex.

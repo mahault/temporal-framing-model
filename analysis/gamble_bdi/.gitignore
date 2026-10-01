@@ -1,0 +1,4 @@
+# Participant-level data derived from the Rutledge GBE dataset (third-party)
+out/person_params.npz
+out/*.npz
+out/*.pt
