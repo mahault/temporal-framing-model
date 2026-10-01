@@ -13,11 +13,10 @@ pool = json.load(open(OUT / "pooled.json"))
 
 fig, axes = plt.subplots(1, 2, figsize=(11.5, 3.8))
 ax = axes[0]
-rows = [("Baumeister S1", ev["baumeister1"]["contrasts"]["M2_shared-M1b_shared"]["ll"]),
-        ("Bayer", ev["bayer"]["contrasts"]["M2_shared-M1b_shared"]["ll"]),
-        ("Bayer, dense labels", ev["bayer"]["contrasts_dense"]["M2_shared-M1b_shared"]["ll"]),
-        ("pooled (participants)", pool["M2_shared-M1b_shared"]["pooled_participant"]),
-        ("pooled (inverse variance)", pool["M2_shared-M1b_shared"]["inverse_variance"])]
+rows = [("Baumeister Study 1", ev["baumeister1"]["contrasts"]["M2_shared-M1b_shared"]["ll"]),
+        ("mCog", ev["bayer"]["contrasts"]["M2_shared-M1b_shared"]["ll"]),
+        ("mCog, at least 20 labels", ev["bayer"]["contrasts_dense"]["M2_shared-M1b_shared"]["ll"]),
+        ("pooled", pool["M2_shared-M1b_shared"]["inverse_variance"])]
 y = np.arange(len(rows))[::-1]
 for yi, (lab, (m, lo, hi)) in zip(y, rows):
     ax.errorbar(m, yi, xerr=[[m - lo], [hi - m]], fmt="o", color="k" if "pooled" in lab else "C0", capsize=3)
@@ -34,7 +33,7 @@ for j, ds in enumerate(("baumeister1", "bayer")):
     vals = [ev[ds]["contrasts"][k]["ll"] for _, k in names]
     x = np.arange(3) + j * 0.35
     ax.bar(x, [v[0] for v in vals], 0.3, yerr=[[v[0] - v[1] for v in vals], [v[2] - v[0] for v in vals]],
-           capsize=3, label="Baumeister S1" if ds == "baumeister1" else "Bayer")
+           capsize=3, label="Baumeister Study 1" if ds == "baumeister1" else "mCog")
 ax.axhline(0, color="grey", lw=0.8)
 ax.set_xticks(np.arange(3) + 0.17); ax.set_xticklabels([n for n, _ in names])
 ax.set_ylabel("variant minus full agent (nats per signal)")

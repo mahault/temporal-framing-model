@@ -19,6 +19,7 @@ Run:  python sensitivity_bframe.py [--workers 8] [--seeds 4] [--quick]
 from __future__ import annotations
 
 import argparse
+import json
 import itertools
 from pathlib import Path
 
@@ -78,6 +79,8 @@ def main():
     else:
         res = [_job(j) for j in jobs]
 
+    (ROOT / "reviews" / "sensitivity_raw.json").write_text(json.dumps(res), encoding="utf-8")
+
     # ── aggregate ─────────────────────────────────────────
     def grid(metric):
         M = np.full((len(STICKY), len(PULL)), np.nan)
@@ -103,9 +106,9 @@ def main():
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
     fig, axes = plt.subplots(1, 4, figsize=(17, 4.2))
-    titles = [("recall_collapse", "RECALL collapse\n(healthy - impaired)", "Blues"),
-              ("future_fixation", "Future fixation\n(stressed - healthy q(FUTURE))", "Oranges"),
-              ("diathesis", "Diathesis-stress holds\n(fraction of seeds)", "Greens")]
+    titles = [("recall_collapse", "Recall collapse\n(healthy minus impaired)", "Blues"),
+              ("future_fixation", "Future fixation\n(stressed minus healthy q(future))", "Oranges"),
+              ("diathesis", "Low-mood attractor\n(fraction of seeds)", "Greens")]
     for ax, (m, title, cmap) in zip(axes[:3], titles):
         im = ax.imshow(A[m], origin="lower", cmap=cmap, aspect="auto",
                        vmin=0 if m == "diathesis" else None, vmax=1 if m == "diathesis" else None)
@@ -124,7 +127,7 @@ def main():
     for m, c in (("recall_collapse", "#0072B2"), ("future_fixation", "#E69F00"),
                  ("diathesis", "#009E73")):
         mu = [B[g][m][0] for g in GAINS]; sd = [B[g][m][1] for g in GAINS]
-        ax.errorbar(GAINS, mu, yerr=sd, marker="o", color=c, label=m.replace("_", " "))
+        ax.errorbar(GAINS, mu, yerr=sd, marker="o", color=c, label={"recall_collapse": "recall collapse", "future_fixation": "future fixation", "diathesis": "low-mood attractor"}[m])
     ax.set_xlabel("frame gain g"); ax.set_ylabel("effect size")
     ax.set_title("Sensitivity to the gating gain", fontsize=10)
     ax.axhline(0, color="gray", lw=0.6, ls=":")
