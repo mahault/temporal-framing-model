@@ -907,3 +907,25 @@ and participant bootstrap as section 13.
   channels each within 0.005.
 - Channels on the filter, objective matched: Geschwind h6 +0.0015 [+0.0003, +0.0027], reliability h6
   +0.001 [-0.002, +0.004]; no effect on change after events.
+
+## 20. Channels from thought content in daily life (2026-10-01)
+
+Predictions committed before analysis (fba8116, 2026-10-01T15:20-04:00). Full record reviews/CHANNELS_CONTENT.md;
+code analysis/channels_content/channels_content.py (stages static, heldout, dynamic, bayer, report); aggregates in
+analysis/channels_content/out/. Baumeister Study 1, 453 participants, 6,438 signals. Each channel's input is the
+thought-pleasantness rating routed by the signal's temporal orientation (split equally over multiple orientations).
+
+| Result | Value |
+|---|---|
+| Thought pleasantness, held-out gain over baseline | +0.116 nats/signal [0.100, 0.130] |
+| Weights (MixedLM) backward / present / forward | 0.509 (0.037) / 0.406 (0.015) / 0.442 (0.021) |
+| Equal weights, split rule | χ²(2) 7.43, p .024, BH .057 |
+| Equal weights, copy / single focus / random slopes | p .013 (BH .047) / .38 / .19 |
+| Held-out three minus one term, static / state space | +0.00063 [−0.00051, +0.00169] / +0.00047 [−0.00058, +0.00147] |
+| Ratios F/P, B/P (gamble 0.51, 0.18) | 1.10 [0.93, 1.29], 1.32 [1.08, 1.60] |
+| Carry-over to next signal backward / present / forward | 0.014 (0.046) / 0.109 (0.020) / 0.128 (0.027) |
+| Signed content per SD backward / present / forward | 0.687 / 0.573 / 0.198, χ²(2) 163.9 |
+| Bayer, problem thought by orientation B / P / F | 0.289 / 0.267 / 0.295, equality p .79 |
+
+Verdicts: P1 distinct weights mixed (rule dependent); P2 held-out channel gain not supported; P3 gamble ordering
+not supported; P4 carry-over supported for present and forward, B versus F difference not significant.
