@@ -1,0 +1,6 @@
+# Participant-level arrays derived from the Rutledge GBE data (third party, see data_raw/)
+out/*.npz
+# Fitted parameter dumps are small JSON and are kept; per-participant scores are not
+out/scores_*.npz
+__pycache__/
+out/*.npy
