@@ -26,7 +26,7 @@ for ax, o in zip(axes, res):
     ax.set_title(f"{o['name']} (n = {o['n']})", fontsize=9.5, loc="left")
     for s in ("top", "right"):
         ax.spines[s].set_visible(False)
-axes[0].set_ylabel("switching after a loss,\nforegone better minus foregone same")
+axes[0].set_ylabel("P(switch after a loss): foregone better" + chr(10) + "minus foregone equally bad")
 fig.tight_layout()
 fig.savefig(ROOT / "figures" / "fig_counterfactual_signature.png", dpi=200, bbox_inches="tight")
 print("written")
