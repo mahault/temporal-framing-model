@@ -37,10 +37,13 @@ ax[0].legend(fontsize=8, loc="lower right")
 
 # b. content of thought, Study 1
 sub = b1["subitem_valence"]
-order = [("regret", "regret"), ("replaying", "replaying"), ("worries", "worry"), ("fear", "fear"), ("planning", "planning")]
+order = [("regret", "regret"), ("replaying", "replay" + chr(10) + "-ing"), ("worries", "worry"), ("fear", "fear"), ("planning", "planning")]
 vals = [sub[k]["mean_valence"] for k, _ in order]
-cols = ["C3", "C3", "C0", "C0", "C2"]
-ax[1].bar(range(len(order)), vals, color=cols)
+cols = ["C3", "C3", "C0", "C0", "C0"]
+bars = ax[1].bar(range(len(order)), vals, color=cols)
+bars[4].set_hatch("//"); bars[4].set_edgecolor("white")
+from matplotlib.patches import Patch
+ax[1].legend(handles=[Patch(color="C3", label="past content"), Patch(color="C0", label="future content")], fontsize=7, loc="upper left", bbox_to_anchor=(0.0, 0.93), frameon=False)
 for i, (k, _) in enumerate(order):
     ax[1].text(i, vals[i] + 0.03, f"n={sub[k]['n']}", ha="center", fontsize=7)
 pres = b1["valence_mean_by_orientation"]["present"]["mean"]
@@ -62,7 +65,7 @@ ax[2].axhline(0, color="grey", lw=0.6)
 ax[2].set_xticks([0, 1, 2]); ax[2].set_xticklabels(["signal before", "at signal", "signal after"])
 ax[2].set_ylabel("valence minus present mean (fraction of scale)")
 ax[2].set_title("c  Valence around each orientation", loc="left", fontsize=10)
-ax[2].legend(fontsize=7, ncol=2, loc="upper center", bbox_to_anchor=(0.5, -0.16))
+ax[2].legend(fontsize=7, ncol=2, loc="upper center", bbox_to_anchor=(0.5, -0.13), frameon=False)
 
 plt.tight_layout()
 out = ROOT / "figures" / "orientation_summary_paper.png"

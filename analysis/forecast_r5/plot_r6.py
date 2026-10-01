@@ -14,9 +14,10 @@ import matplotlib.pyplot as plt  # noqa: E402
 from common import HORIZONS, OUT, ROOT, SAMPLES  # noqa: E402
 
 MODEL = "kfx_all_h6"
-LABEL = {"ridge_tt": "Ridge, six lags, events, time of day", "pmean_all": "Running person mean",
+LABEL = {MODEL: "Local-level filter with precision state and channels (reported)",
+         "ridge_tt": "Ridge, six lags, events, time of day", "pmean_all": "Running person mean",
          "ridge_pm_all": "Ridge with person mean and SD", "ebar1": "Per-person AR(1), shrunk",
-         "kf_all_h1": "Local-level filter", MODEL: "Two-timescale filter with precision state"}
+         "kf_all_h1": "Local-level filter, constant noise"}
 SAMPLE_LABEL = {"Geschwind": "Geschwind sample", "osf_83cfk": "Reliability sample"}
 COL = {"ridge_tt": "#0072B2", "pmean_all": "#D55E00", "ridge_pm_all": "#E69F00", "ebar1": "#CC79A7",
        "kf_all_h1": "#009E73", MODEL: "#000000"}
@@ -30,7 +31,7 @@ def main():
         for n in LABEL:
             ys = [r2[n][str(h)] if str(h) in r2[n] else r2[n][h] for h in HORIZONS]
             ax[0, j].plot(HORIZONS, ys, "-" if n == MODEL else "--", marker="o", ms=3, color=COL[n],
-                          lw=2 if n == MODEL else 1.2, label=LABEL[n])
+                          lw=3.2 if n == MODEL else 1.2, alpha=0.45 if n == MODEL else 1.0, label=LABEL[n])
         ax[0, j].set_title(SAMPLE_LABEL[s])
         ax[0, j].set_ylabel("held-out $R^2$")
         for k, b in enumerate(("ridge_pm_all", "ebar1", "kf_all_h1")):
