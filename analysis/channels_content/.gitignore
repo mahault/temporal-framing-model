@@ -1,0 +1,2 @@
+# participant-level rows are never written; logs only
+*.log
