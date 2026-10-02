@@ -1,0 +1,283 @@
+{
+ "q": 0.05,
+ "n_tests": 25,
+ "nominal_below_05": 4,
+ "survive": 1,
+ "tests": [
+  {
+   "family_part": "reactivity",
+   "model": "Geschwind_NA",
+   "term": "STR_s_pc:neuroticism_z",
+   "b": 0.021093555183059397,
+   "lo": -0.003168356697558338,
+   "hi": 0.04535546706367713,
+   "p": 0.08837869542491951,
+   "p_adj": 0.34715111135913695,
+   "survive": false
+  },
+  {
+   "family_part": "reactivity",
+   "model": "Geschwind_PA",
+   "term": "STR_s_pc:neuroticism_z",
+   "b": 0.005302482210815742,
+   "lo": -0.01797959520910511,
+   "hi": 0.028584559630736597,
+   "p": 0.6553221430918292,
+   "p_adj": 0.7801454084426538,
+   "survive": false
+  },
+  {
+   "family_part": "reactivity",
+   "model": "Kane_NA",
+   "term": "STR_s_pc:neuroticism_z",
+   "b": 0.02780616205251667,
+   "lo": -0.0006511983670650576,
+   "hi": 0.0562635224720984,
+   "p": 0.05547802579430288,
+   "p_adj": 0.2773901289715144,
+   "survive": false
+  },
+  {
+   "family_part": "reactivity",
+   "model": "Kane_PA",
+   "term": "STR_s_pc:neuroticism_z",
+   "b": -1.2056559255173316e-05,
+   "lo": -0.03009246460300614,
+   "hi": 0.030068351484495794,
+   "p": 0.9993732017582129,
+   "p_adj": 0.9993732017582129,
+   "survive": false
+  },
+  {
+   "family_part": "lagged",
+   "model": "Geschwind_NA",
+   "term": "STR_s_lagpc:neuroticism_z",
+   "b": -0.004978544200222696,
+   "lo": -0.021617784180514604,
+   "hi": 0.011660695780069215,
+   "p": 0.5575858693002631,
+   "p_adj": 0.7694614762843455,
+   "survive": false
+  },
+  {
+   "family_part": "lagged",
+   "model": "Kane_NA",
+   "term": "STR_s_lagpc:neuroticism_z",
+   "b": -0.010451142285480096,
+   "lo": -0.02914841042163653,
+   "hi": 0.00824612585067634,
+   "p": 0.2732741051448311,
+   "p_adj": 0.7590947365134197,
+   "survive": false
+  },
+  {
+   "family_part": "inertia",
+   "model": "Geschwind_NA_neuroticism",
+   "term": "NA_s_lagpc:neuroticism_z",
+   "b": 0.00266293169822062,
+   "lo": -0.04201922946269684,
+   "hi": 0.04734509285913808,
+   "p": 0.9070119142564086,
+   "p_adj": 0.9858825154960963,
+   "survive": false
+  },
+  {
+   "family_part": "inertia",
+   "model": "Geschwind_NA_neuroticism_nocontrols",
+   "term": "NA_s_lagpc:neuroticism_z",
+   "b": 0.020105888270866464,
+   "lo": -0.01928022768294639,
+   "hi": 0.05949200422467932,
+   "p": 0.3170562200968714,
+   "p_adj": 0.7694614762843455,
+   "survive": false
+  },
+  {
+   "family_part": "inertia",
+   "model": "Geschwind_PA_neuroticism",
+   "term": "PA_s_lagpc:neuroticism_z",
+   "b": 0.010950169087153768,
+   "lo": -0.02851998404080701,
+   "hi": 0.05042032221511454,
+   "p": 0.586612800511308,
+   "p_adj": 0.7694614762843455,
+   "survive": false
+  },
+  {
+   "family_part": "inertia",
+   "model": "Geschwind_PA_neuroticism_nocontrols",
+   "term": "PA_s_lagpc:neuroticism_z",
+   "b": 0.009347492058194707,
+   "lo": -0.02630242369740629,
+   "hi": 0.0449974078137957,
+   "p": 0.6073168852662578,
+   "p_adj": 0.7694614762843455,
+   "survive": false
+  },
+  {
+   "family_part": "inertia",
+   "model": "Kane_NA_neuroticism",
+   "term": "NA_s_lagpc:neuroticism_z",
+   "b": -0.011535386996590352,
+   "lo": -0.04315131997109665,
+   "hi": 0.02008054597791594,
+   "p": 0.47453964411051497,
+   "p_adj": 0.7694614762843455,
+   "survive": false
+  },
+  {
+   "family_part": "inertia",
+   "model": "Kane_NA_neuroticism_nocontrols",
+   "term": "NA_s_lagpc:neuroticism_z",
+   "b": -0.013031066871487673,
+   "lo": -0.04190110530957018,
+   "hi": 0.01583897156659484,
+   "p": 0.3763352974683185,
+   "p_adj": 0.7694614762843455,
+   "survive": false
+  },
+  {
+   "family_part": "inertia",
+   "model": "Kane_PA_neuroticism",
+   "term": "PA_s_lagpc:neuroticism_z",
+   "b": -0.027070276737852162,
+   "lo": -0.059059726732966916,
+   "hi": 0.0049191732572625955,
+   "p": 0.09720231118055835,
+   "p_adj": 0.34715111135913695,
+   "survive": false
+  },
+  {
+   "family_part": "inertia",
+   "model": "Kane_PA_neuroticism_nocontrols",
+   "term": "PA_s_lagpc:neuroticism_z",
+   "b": -0.05078811163520676,
+   "lo": -0.08134819229535895,
+   "hi": -0.020228030975054566,
+   "p": 0.0011248372807846996,
+   "p_adj": 0.02812093201961749,
+   "survive": true
+  },
+  {
+   "family_part": "persistence",
+   "model": "Geschwind_neuroticism",
+   "term": "TH_s_lagpc:neuroticism_z",
+   "b": 0.01263928628850142,
+   "lo": -0.031997033691659085,
+   "hi": 0.05727560626866193,
+   "p": 0.5789040336047693,
+   "p_adj": 0.7694614762843455,
+   "survive": false
+  },
+  {
+   "family_part": "persistence",
+   "model": "Kane_neuroticism",
+   "term": "TH_s_lagpc:neuroticism_z",
+   "b": -0.02510238428171534,
+   "lo": -0.04979003649522311,
+   "hi": -0.0004147320682075725,
+   "p": 0.04627352065146204,
+   "p_adj": 0.2773901289715144,
+   "survive": false
+  },
+  {
+   "family_part": "pooled_DL",
+   "model": "R1_NA",
+   "term": "pooled",
+   "b": 0.023919024978457576,
+   "lo": 0.005456022725948081,
+   "hi": 0.04238202723096707,
+   "p": 0.011110570925672731,
+   "p_adj": 0.09258809104727277,
+   "survive": false
+  },
+  {
+   "family_part": "pooled_DL",
+   "model": "R1_PA",
+   "term": "pooled",
+   "b": 0.003311466439649882,
+   "lo": -0.015100334201906953,
+   "hi": 0.021723267081206716,
+   "p": 0.724450510649169,
+   "p_adj": 0.8232392166467829,
+   "survive": false
+  },
+  {
+   "family_part": "pooled_DL",
+   "model": "R2_NA",
+   "term": "pooled",
+   "b": -0.007397191968066453,
+   "lo": -0.019827322017695173,
+   "hi": 0.005032938081562267,
+   "p": 0.24345300018151161,
+   "p_adj": 0.7590947365134197,
+   "survive": false
+  },
+  {
+   "family_part": "pooled_DL",
+   "model": "I_NA",
+   "term": "pooled",
+   "b": -0.006798445507301023,
+   "lo": -0.032607536045034705,
+   "hi": 0.01901064503043266,
+   "p": 0.605652479055188,
+   "p_adj": 0.7694614762843455,
+   "survive": false
+  },
+  {
+   "family_part": "pooled_DL",
+   "model": "I_PA",
+   "term": "pooled",
+   "b": -0.009890089843552118,
+   "lo": -0.046977078259343955,
+   "hi": 0.02719689857223972,
+   "p": 0.6011979157607654,
+   "p_adj": 0.7694614762843455,
+   "survive": false
+  },
+  {
+   "family_part": "pooled_DL",
+   "model": "I_NA_nocontrols",
+   "term": "pooled",
+   "b": 0.0007180099086951327,
+   "lo": -0.031282579913954535,
+   "hi": 0.0327185997313448,
+   "p": 0.9649225012670037,
+   "p_adj": 0.9993732017582129,
+   "survive": false
+  },
+  {
+   "family_part": "pooled_DL",
+   "model": "P_thought",
+   "term": "pooled",
+   "b": -0.0110007984610144,
+   "lo": -0.046786914295027154,
+   "hi": 0.024785317372998356,
+   "p": 0.5468333637013905,
+   "p_adj": 0.7694614762843455,
+   "survive": false
+  },
+  {
+   "family_part": "mega",
+   "model": "R1_NA",
+   "term": "STR_s_pc:neuroticism_z",
+   "b": 0.02658320895399291,
+   "lo": 0.006890093525028652,
+   "hi": 0.04627632438295717,
+   "p": 0.008152138644996613,
+   "p_adj": 0.09258809104727277,
+   "survive": false
+  },
+  {
+   "family_part": "mega",
+   "model": "I_NA",
+   "term": "NA_s_lagpc:neuroticism_z",
+   "b": -0.006590380492046303,
+   "lo": -0.03231410970738681,
+   "hi": 0.0191333487232942,
+   "p": 0.6155691810274764,
+   "p_adj": 0.7694614762843455,
+   "survive": false
+  }
+ ]
+}

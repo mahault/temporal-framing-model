@@ -9,13 +9,15 @@ import matplotlib.pyplot as plt
 
 ROOT = Path(__file__).resolve().parents[2]
 r = json.load(open(ROOT / "analysis" / "diathesis_r6" / "out" / "results.json"))
+# Gainey dropped (openESM 2.0.0 withdrew its person-level trait file); pooled values without Gainey
+r["pooled"] = json.load(open(ROOT / "analysis" / "diathesis_r6" / "out" / "results_nogainey.json"))["pooled"]
 
 rows = []  # (label, b, lo, hi, kind)
 
 
 def add(title, sec, keys, term, pool_key):
     rows.append((title, None, None, None, "head"))
-    for s in ("Geschwind", "Kane", "Gainey"):
+    for s in ("Geschwind", "Kane"):
         f = r[sec].get(keys.format(s=s))
         if f and term in f["fixed"]:
             x = f["fixed"][term]
@@ -32,7 +34,7 @@ add("Inertia of negative affect, variability controlled", "inertia", "{s}_NA_neu
     "NA_s_lagpc:neuroticism_z", "I_NA")
 add("Inertia of negative affect, no controls", "inertia", "{s}_NA_neuroticism_nocontrols",
     "NA_s_lagpc:neuroticism_z", "I_NA_nocontrols")
-add("Persistence of worry or brooding", "persistence", "{s}_neuroticism", "TH_s_lagpc:neuroticism_z", "P_thought")
+add("Persistence of worry", "persistence", "{s}_neuroticism", "TH_s_lagpc:neuroticism_z", "P_thought")
 
 fig, ax = plt.subplots(figsize=(7.2, 0.27 * len(rows) + 0.8))
 y = len(rows)
