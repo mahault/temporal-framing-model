@@ -24,3 +24,6 @@ data_raw/
 # Ad-hoc repo snapshots
 temporal_framing_model.zip
 temporal-framing-model.zip
+
+# Confidential reviews, internal reviews, unpublished drafts and per-participant outputs stay local
+reviews/
