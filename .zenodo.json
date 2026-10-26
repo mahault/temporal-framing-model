@@ -3,10 +3,29 @@
   "upload_type": "software",
   "description": "Model code, analysis scripts and the predictions written before analysis for the paper \"Two Timescales and a Precision State: An Active-Inference Model of Affect and Its Temporal Structure in Daily Life\".",
   "creators": [
-    {"name": "Job, Manon", "affiliation": "Sorbonne Université"},
-    {"name": "White, Ben", "affiliation": "Université PSL", "orcid": "0000-0002-0016-1950"},
-    {"name": "Albarracin, Mahault", "affiliation": "Université du Québec à Montréal", "orcid": "0000-0003-0916-4645"}
+    {
+      "name": "Job, Manon",
+      "affiliation": "Sorbonne Université",
+      "orcid": "0009-0003-6071-1680"
+    },
+    {
+      "name": "White, Ben",
+      "affiliation": "Université PSL",
+      "orcid": "0000-0002-0016-1950"
+    },
+    {
+      "name": "Albarracin, Mahault",
+      "affiliation": "Université du Québec à Montréal",
+      "orcid": "0000-0003-0916-4645"
+    }
   ],
-  "keywords": ["active inference", "affect", "mood", "experience sampling", "temporal orientation", "computational psychiatry"],
+  "keywords": [
+    "active inference",
+    "affect",
+    "mood",
+    "experience sampling",
+    "temporal orientation",
+    "computational psychiatry"
+  ],
   "license": "MIT"
 }
