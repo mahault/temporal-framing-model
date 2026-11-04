@@ -1,0 +1,349 @@
+{
+ "Geschwind": {
+  "1": {
+   "n_people": 129,
+   "n_rows": 11486,
+   "mean_ll": {
+    "constant": 0.4898,
+    "z_model": 0.5574,
+    "person": 0.5504,
+    "bound": 0.5066,
+    "person_bound": 0.5547,
+    "person_z": 0.558,
+    "person_bound_z": 0.561
+   },
+   "contrasts": {
+    "z_model - constant": [
+     0.0676,
+     0.0506,
+     0.0864
+    ],
+    "person - constant": [
+     0.0606,
+     0.0432,
+     0.0801
+    ],
+    "bound - constant": [
+     0.0167,
+     0.007,
+     0.0277
+    ],
+    "person_bound - person": [
+     0.0043,
+     0.0009,
+     0.0075
+    ],
+    "person_z - person": [
+     0.0076,
+     0.004,
+     0.0113
+    ],
+    "person_bound_z - person_bound": [
+     0.0063,
+     0.0031,
+     0.0097
+    ],
+    "z_model - person": [
+     0.007,
+     0.002,
+     0.0123
+    ],
+    "z_model - person_bound": [
+     0.0028,
+     -0.0033,
+     0.0091
+    ],
+    "z_model - person_bound_z": [
+     -0.0035,
+     -0.0084,
+     0.0012
+    ]
+   },
+   "between_share_logvar": 0.586,
+   "params_k0": {
+    "a_const": 1.0005705793907407,
+    "n0": 5,
+    "a_person": 0.9056163149543252,
+    "b_const": [
+     -0.18486578854297517,
+     -6.0742471578139785
+    ],
+    "a_bound": 1.2902222605107425,
+    "b_person": [
+     0.511418714807378,
+     -4.661205987276572
+    ],
+    "a_pb": 1.0114312924432656,
+    "lam_pz": 0.2,
+    "gam_pz": 0.25,
+    "a_pz": 0.9564692215706377,
+    "lam_pbz": 0.2,
+    "gam_pbz": 0.25,
+    "a_pbz": 1.0446347461613157
+   }
+  },
+  "6": {
+   "n_people": 129,
+   "n_rows": 10246,
+   "mean_ll": {
+    "constant": 0.3764,
+    "z_model": 0.4251,
+    "person": 0.4107,
+    "bound": 0.392,
+    "person_bound": 0.4178,
+    "person_z": 0.4144,
+    "person_bound_z": 0.4173
+   },
+   "contrasts": {
+    "z_model - constant": [
+     0.0487,
+     0.0322,
+     0.0673
+    ],
+    "person - constant": [
+     0.0342,
+     0.0186,
+     0.0505
+    ],
+    "bound - constant": [
+     0.0156,
+     0.0041,
+     0.0284
+    ],
+    "person_bound - person": [
+     0.0071,
+     0.0012,
+     0.0132
+    ],
+    "person_z - person": [
+     0.0037,
+     -0.0001,
+     0.0074
+    ],
+    "person_bound_z - person_bound": [
+     -0.0005,
+     -0.0037,
+     0.0028
+    ],
+    "z_model - person": [
+     0.0144,
+     0.0069,
+     0.0227
+    ],
+    "z_model - person_bound": [
+     0.0074,
+     -0.0007,
+     0.0157
+    ],
+    "z_model - person_bound_z": [
+     0.0078,
+     0.0004,
+     0.0152
+    ]
+   },
+   "between_share_logvar": 0.604,
+   "params_k0": {
+    "a_const": 0.9794702104782689,
+    "n0": 10,
+    "a_person": 0.9354475238546149,
+    "b_const": [
+     1.0920898358867523,
+     -10.557661667422884
+    ],
+    "a_bound": 1.1805539334152653,
+    "b_person": [
+     1.657985597235379,
+     -9.004872588954042
+    ],
+    "a_pb": 0.9941280333905015,
+    "lam_pz": 0.1,
+    "gam_pz": 0.25,
+    "a_pz": 0.9641817347961491,
+    "lam_pbz": 0.1,
+    "gam_pbz": 0.25,
+    "a_pbz": 1.0181645738685605
+   }
+  }
+ },
+ "osf_83cfk": {
+  "1": {
+   "n_people": 91,
+   "n_rows": 6230,
+   "mean_ll": {
+    "constant": 0.8786,
+    "z_model": 0.9679,
+    "person": 0.9652,
+    "bound": 0.8886,
+    "person_bound": 0.9656,
+    "person_z": 0.9752,
+    "person_bound_z": 0.9746
+   },
+   "contrasts": {
+    "z_model - constant": [
+     0.0892,
+     0.0554,
+     0.1268
+    ],
+    "person - constant": [
+     0.0865,
+     0.0513,
+     0.1294
+    ],
+    "bound - constant": [
+     0.0099,
+     -0.0037,
+     0.0242
+    ],
+    "person_bound - person": [
+     0.0005,
+     -0.0041,
+     0.0047
+    ],
+    "person_z - person": [
+     0.0101,
+     0.0045,
+     0.0159
+    ],
+    "person_bound_z - person_bound": [
+     0.0089,
+     0.0035,
+     0.0141
+    ],
+    "z_model - person": [
+     0.0027,
+     -0.0055,
+     0.0106
+    ],
+    "z_model - person_bound": [
+     0.0022,
+     -0.0073,
+     0.0123
+    ],
+    "z_model - person_bound_z": [
+     -0.0067,
+     -0.0164,
+     0.0034
+    ]
+   },
+   "between_share_logvar": 0.597,
+   "params_k0": {
+    "a_const": 1.0410931990715293,
+    "n0": 5,
+    "a_person": 0.9473672700632014,
+    "b_const": [
+     -1.7493331662162606,
+     -1.3739430238227484
+    ],
+    "a_bound": 1.503129911512057,
+    "b_person": [
+     0.04238346526024495,
+     -2.1776570307411562
+    ],
+    "a_pb": 1.0383699746508623,
+    "lam_pz": 0.35,
+    "gam_pz": 0.25,
+    "a_pz": 1.0327977407089333,
+    "lam_pbz": 0.35,
+    "gam_pbz": 0.25,
+    "a_pbz": 1.111676797676189
+   }
+  },
+  "6": {
+   "n_people": 91,
+   "n_rows": 5775,
+   "mean_ll": {
+    "constant": 0.7161,
+    "z_model": 0.7809,
+    "person": 0.7747,
+    "bound": 0.727,
+    "person_bound": 0.7737,
+    "person_z": 0.7741,
+    "person_bound_z": 0.7735
+   },
+   "contrasts": {
+    "z_model - constant": [
+     0.0648,
+     0.0357,
+     0.0959
+    ],
+    "person - constant": [
+     0.0585,
+     0.0268,
+     0.0897
+    ],
+    "bound - constant": [
+     0.0109,
+     -0.0074,
+     0.0293
+    ],
+    "person_bound - person": [
+     -0.0009,
+     -0.0096,
+     0.0064
+    ],
+    "person_z - person": [
+     -0.0005,
+     -0.0046,
+     0.0036
+    ],
+    "person_bound_z - person_bound": [
+     -0.0003,
+     -0.0027,
+     0.0024
+    ],
+    "z_model - person": [
+     0.0062,
+     -0.0058,
+     0.0184
+    ],
+    "z_model - person_bound": [
+     0.0072,
+     -0.0081,
+     0.023
+    ],
+    "z_model - person_bound_z": [
+     0.0074,
+     -0.007,
+     0.0241
+    ]
+   },
+   "between_share_logvar": 0.63,
+   "params_k0": {
+    "a_const": 1.0245685755733165,
+    "n0": 5,
+    "a_person": 0.9681945849226062,
+    "b_const": [
+     4.277430113941492,
+     -17.78108335887938
+    ],
+    "a_bound": 0.959794189167643,
+    "b_person": [
+     6.4923845854788045,
+     -17.04314068014368
+    ],
+    "a_pb": 0.5872862809394064,
+    "lam_pz": 0.1,
+    "gam_pz": 0.25,
+    "a_pz": 1.003648526244655,
+    "lam_pbz": 0.02,
+    "gam_pbz": 0.25,
+    "a_pbz": 0.6140827882395388
+   }
+  }
+ },
+ "neuroticism_cv_r2": {
+  "mean": [
+   0.255
+  ],
+  "mean_sd": [
+   0.293
+  ],
+  "mean_sd_rmssd": [
+   0.282
+  ],
+  "mean_sd_vol": [
+   0.282
+  ]
+ },
+ "neuroticism_n": 128
+}
